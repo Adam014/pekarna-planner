@@ -63,8 +63,11 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - `bun run dev` – Next.js dev server
 - `bun run typecheck` – route types + `tsc --noEmit`
 - `bun run lint` – oxlint; `bun run format` / `format:check` – Prettier
-- `bun run test` / `test:watch` – Vitest. Never `bun test`: it runs Bun's own
-  runner. Tests run with `TZ=America/New_York` on purpose.
+- `bun run test` / `test:watch` – Vitest unit tests. Never `bun test`: it
+  runs Bun's own runner. Tests run with `TZ=America/New_York` on purpose.
+- `bun run test:db` – service tests (`*.db.test.ts`) on a real Postgres 18 at
+  `TEST_DATABASE_URL`. They drop and rebuild its schema, so it must be a
+  separate local database; `test/db.ts` refuses anything not on localhost.
 - `bun run build` – production build (includes type checking)
 - `bun run db:generate` – SQL migration from the schema; `db:migrate` applies
   it; `db:seed` creates the demo accounts; `db:studio` browses the data
@@ -78,8 +81,10 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   in `src/components/<feature>/`
 - `src/lib/domain/` – pure business logic (bake plan, availability, cutoff,
   phone numbers), no I/O, fully unit tested
-- `src/lib/services/` – one `<feature>.service.ts` per feature: checks the
-  session and role, validates input, calls the domain, reads and writes the DB
+- `src/lib/services/` – one `<feature>.service.ts` per feature: takes the
+  database and already validated input, calls the domain, reads and writes
+  the DB, and returns expected outcomes (rejected, needs confirmation) as
+  values. Server actions check the session and validate with Zod first
 - `src/lib/validators/` – Zod schemas shared by forms and services
 - `src/lib/db/` – Drizzle client (`index.ts`), `schema/` (one file per table
   group), `migrations/` (generated SQL, committed), seed script
@@ -101,7 +106,10 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   reservations too). Check it inside the same DB transaction that saves the
   reservation, after locking the product rows (`FOR UPDATE`, sorted by id), so
   two customers cannot overbook the last pieces (ADR 0007). The same applies
-  to every write that adds demand, including standing order days.
+  to every write that adds demand, including standing order days. The limit
+  is hard for everyone: online, staff and standing orders (a day that does
+  not fit is not created and is reported). Staff only confirm a warning for
+  a day the product is not baked.
   Postgres returns `sum()` as `bigint`, which node-postgres reads as a string:
   cast it (`::int` or `mapWith(Number)`).
 - **Orders keep a copy** of the customer's name and phone and of each
@@ -120,9 +128,12 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - **Money:** CZK as integer haléře (or whole crowns); no floats. Format with
   `Intl.NumberFormat('cs-CZ')`.
 - **Phone numbers:** normalise to E.164 (+420…) before saving and searching.
-- Status flow: `reserved → picked_up | no_show | cancelled`. Nothing else.
-- **Auth (ADR 0006):** every staff page and every service calls
-  `requireUser()` (or `requireUser("owner")`) on the server; hiding a link is
+- Status: `reserved`, `picked_up`, `no_show`, `cancelled`. Staff may change
+  it either way to fix a wrong mark; bringing an order back to `reserved` or
+  `picked_up` is refused when it no longer fits the limit. Customers only cancel, before the
+  cutoff.
+- **Auth (ADR 0006):** every staff page and every server action calls
+  `requireUser()` (or `requireUser("owner")`) on the server before a service; hiding a link is
   not a check. With Cache Components, read the session inside a `<Suspense>`
   in the page, never at the top of a layout or page. No sign-up; accounts come
   from `bun run db:seed`.

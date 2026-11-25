@@ -1,4 +1,7 @@
-/** Status flow: reserved → picked_up | no_show | cancelled. Nothing else. */
+/**
+ * Staff may change a status either way to fix a wrong mark; customers only
+ * cancel (AGENTS.md).
+ */
 export const RESERVATION_STATUSES = [
   "reserved",
   "picked_up",
@@ -27,3 +30,9 @@ export const STANDING_ORDER_HORIZON_DAYS = 28;
  * can book it, even if the daily job misses a few runs (ADR 0007).
  */
 export const BOOKING_HORIZON_DAYS = 21;
+
+/** An online order's link stops working this many days after pickup. */
+export const ORDER_LINK_DAYS_AFTER_PICKUP = 30;
+
+/** Statuses whose pieces count towards the daily limit and the bake plan. */
+export const COUNTED_STATUSES = ["reserved", "picked_up"] as const;

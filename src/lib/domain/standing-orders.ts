@@ -30,8 +30,8 @@ export function standingOrderDates(
 }
 
 /**
- * Weekdays of the template on which the product is not baked. A template is
- * saved only when this is empty for every product in it.
+ * Weekdays of the template on which the product is not baked. The product is
+ * left out of those days and the owner is told.
  */
 export function unbakedWeekdays(
   weekdays: readonly number[],

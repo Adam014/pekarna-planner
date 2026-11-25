@@ -22,6 +22,21 @@ jobs:
     # The deploy job is added with the hosting ADR.
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Real Postgres 18 for the service tests (bun run test:db), as on Neon.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,11 +69,16 @@ jobs:
       - name: Unit tests
         if: steps.app.outputs.exists == 'true'
         run: bun run test
+      - name: Database tests
+        if: steps.app.outputs.exists == 'true'
+        run: bun run test:db
+        env:
+          TEST_DATABASE_URL: postgres://ci:ci@localhost:5432/ci
       - name: Build (includes typecheck)
         if: steps.app.outputs.exists == 'true'
         run: bun run build
-        # The build imports the auth route, which needs these to be set. CI has
-        # no database: the pool never connects and the values are throwaway.
+        # The build imports the auth route, which needs these to be set. The
+        # pool never connects during the build; the values are throwaway.
         env:
           DATABASE_URL: postgres://ci:ci@localhost:5432/ci
           BETTER_AUTH_SECRET: ci-build-only-not-a-real-secret-0000000000

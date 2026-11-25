@@ -1,5 +1,5 @@
 /** "Plán pečení" for one day (R4). */
-import type { ReservationStatus } from "./reservation";
+import { COUNTED_STATUSES, type ReservationStatus } from "./reservation";
 import { weekdayOf } from "./time";
 
 export type PlanProduct = {
@@ -25,9 +25,6 @@ export type PlanRow = {
   toBake: number;
 };
 
-/** Only these count: cancelled and no-show pieces are not baked. */
-const COUNTED: readonly ReservationStatus[] = ["reserved", "picked_up"];
-
 /**
  * Per product: ordered pieces + buffer. Lists every active product baked that
  * day, and any product that has orders for it, so no order is left out of
@@ -42,7 +39,8 @@ export function bakePlan(
 ): PlanRow[] {
   const ordered = new Map<string, number>();
   for (const item of items) {
-    if (!COUNTED.includes(item.status)) continue;
+    // Cancelled and no-show pieces are not baked.
+    if (!COUNTED_STATUSES.some((s) => s === item.status)) continue;
     ordered.set(
       item.productId,
       (ordered.get(item.productId) ?? 0) + item.quantity,
