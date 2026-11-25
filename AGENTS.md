@@ -12,6 +12,9 @@ clean, and every decision must be explainable.
 3. `docs/decisions/` – Architecture Decision Records (MADR). Follow them; to
    change one, write a new ADR that supersedes it.
 4. This file – stack, domain rules, conventions, process.
+5. `docs/research/` – local research notes and reports with cited sources
+   (gitignored, may be missing in a fresh clone). Read the report before
+   proposing tooling or architecture changes.
 
 ## Stack (proposed, confirm in ADR 0001 when scaffolding)
 
@@ -67,8 +70,14 @@ scaffold time, not from memory.
    If something cannot be verified, say so.
 4. **Logic is test-first.** Bake plan, availability and cutoff get their tests
    before the implementation.
-5. **Review before proposing a commit** (`/review-change`), including two
-   `review-finder`s and one `review-verifier` (`.claude/agents/`).
+5. **Review before proposing a commit** (`/review-change`): check the diff
+   against the requirements, the ADRs and this file, and run `typecheck`,
+   `lint`, `format:check`, `test` and `build`. New logic comes with tests in
+   the same commit. Then independent agents with fresh context review it: two
+   `review-finder`s list candidates, a `review-verifier` confirms or rejects
+   each (`.claude/agents/`). Confirmed findings get fixed. After changing these
+   agents, run `.claude/review-evals/`; when a review misses a real defect,
+   add it there as a case.
 6. **UI changes are checked in a real browser** (desktop, tablet, phone width,
    print) before they are called done.
 7. **Keep an AI log.** Note in `docs/ai-log.md` where the agent was wrong and
@@ -76,6 +85,13 @@ scaffold time, not from memory.
 8. **The human approves.** Never commit, push or deploy without explicit
    approval.
 9. **Record hard-to-reverse decisions** as an ADR (`/new-adr`), with sources.
+
+## CI
+
+`.github/workflows/ci.yml` runs format, lint, tests, build and a dependency
+audit on every push and pull request (skipped until `package.json` exists).
+Actions are pinned by SHA; Dependabot keeps them and the dependencies current
+with a 7-day cooldown. The deploy job is added together with the hosting ADR.
 
 ## Git and infrastructure rules
 

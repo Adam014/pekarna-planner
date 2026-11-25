@@ -19,7 +19,8 @@
       "Bash(git diff *)",
       "Bash(git diff)",
       "Bash(git show *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(git check-ignore *)"
     ],
     "ask": ["Bash(git add *)", "Bash(git commit *)"],
     "deny": [
@@ -30,6 +31,29 @@
       "Bash(vercel deploy *)",
       "Bash(vercel --prod *)",
       "Bash(bunx vercel *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -x \"$CLAUDE_PROJECT_DIR\"/node_modules/.bin/prettier || exit 0; jq -r '.tool_input.file_path // empty' | xargs -I{} \"$CLAUDE_PROJECT_DIR\"/node_modules/.bin/prettier --write --ignore-unknown --log-level warn {}"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && { test -f package.json || exit 0; } && bun run typecheck 1>&2 || exit 2"
+          }
+        ]
+      }
     ]
   }
 }
