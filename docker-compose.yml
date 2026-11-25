@@ -2,7 +2,7 @@
 # the Neon project (ADR 0002).
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: pekarna
       POSTGRES_PASSWORD: pekarna
@@ -10,7 +10,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      # Postgres 18 images keep data under /var/lib/postgresql/18/docker.
+      - db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pekarna -d pekarna"]
       interval: 2s

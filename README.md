@@ -14,7 +14,7 @@ Requires [Bun](https://bun.sh) and Docker.
 ```sh
 bun install
 cp .env.example .env.local
-bun run db:up          # Postgres 17 in Docker
+bun run db:up          # Postgres 18 in Docker
 bun run db:migrate
 bun run dev            # http://localhost:3000
 ```
