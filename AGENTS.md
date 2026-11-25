@@ -92,7 +92,8 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 
 - **Time zone is `Europe/Prague`.** Pickup days, the cutoff and "today" are
   computed in Prague time on the server, never in UTC or the browser's zone.
-  Test around midnight and the DST switch.
+  Test around midnight and the DST switch. Use `Temporal` (built into Node 26,
+  pinned in `engines` and `.node-version`), no date library.
 - **Cutoff:** a reservation for day D closes at D−1 18:00 by default (setting).
   Staff may override the cutoff for phone orders; the online form may not.
 - **Availability:** `dailyLimit −` pieces in `reserved` and `picked_up`

@@ -40,7 +40,7 @@
   "devDependencies": {
     "@next/env": "16.4.6",
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/node": "^20",
+    "@types/node": "26.6.6",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -48,10 +48,13 @@
     "oxlint": "^1.95.0",
     "prettier": "^3.10.1",
     "tailwindcss": "4.3.3",
-    "typescript": "^5",
+    "typescript": "6.0.3",
     "vitest": "^5.1.1"
   },
   "packageManager": "bun@1.4.4",
+  "engines": {
+    "node": "26.x"
+  },
   "ignoreScripts": [
     "sharp",
     "unrs-resolver"
