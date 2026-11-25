@@ -51,6 +51,11 @@ jobs:
       - name: Build (includes typecheck)
         if: steps.app.outputs.exists == 'true'
         run: bun run build
+        # The build imports the auth route, which needs these to be set. CI has
+        # no database: the pool never connects and the values are throwaway.
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          BETTER_AUTH_SECRET: ci-build-only-not-a-real-secret-0000000000
       - name: Audit dependencies for known vulnerabilities
         if: steps.app.outputs.exists == 'true'
         run: bun audit --audit-level=high
