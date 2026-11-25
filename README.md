@@ -6,6 +6,10 @@ to bake and what to hand out each day.
 
 **Live:** https://pekarna.stadnik.dev
 
+> **Demo, not a live product.** Built from a short brief; the bakery and its
+> data are made up. Choices made only because it is a demo are marked as such
+> in the [decisions](docs/decisions/).
+
 > Status: scaffolded (Next.js, Postgres, tooling). Features follow
 > `docs/requirements.md` step by step. This README grows with the code.
 
@@ -18,6 +22,7 @@ bun install
 cp .env.example .env.local
 bun run db:up          # Postgres 18 in Docker
 bun run db:migrate
+bun run db:seed        # demo accounts, passwords from .env.local
 bun run dev            # http://localhost:3000
 ```
 
@@ -36,7 +41,7 @@ and a bake plan nobody computes by hand. Assumptions and reasoning:
 | What                    | Where                                                  |
 | ----------------------- | ------------------------------------------------------ |
 | Problem and assumptions | [`docs/brief.md`](docs/brief.md)                       |
-| Scope (R1–R9)           | [`docs/requirements.md`](docs/requirements.md)         |
+| Scope (R1–R10)          | [`docs/requirements.md`](docs/requirements.md)         |
 | Decisions and why       | [`docs/decisions/`](docs/decisions/) (below)           |
 | Where the AI was wrong  | [`docs/ai-log.md`](docs/ai-log.md)                     |
 | Rules for every change  | [`AGENTS.md`](AGENTS.md)                               |
@@ -80,3 +85,4 @@ checkable rather than trusted:
 3. [Drizzle ORM over a node-postgres pool](docs/decisions/0003-drizzle-and-node-postgres-pool.md)
 4. [Bun, oxlint, Prettier and Vitest for tooling](docs/decisions/0004-bun-oxlint-prettier-vitest.md)
 5. [A sober design system on shadcn/ui](docs/decisions/0005-design-system-on-shadcn.md)
+6. [Better Auth with two staff roles](docs/decisions/0006-better-auth-with-staff-roles.md)

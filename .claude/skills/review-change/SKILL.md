@@ -14,7 +14,7 @@ Report only real problems you can point to in the diff; no speculation.
 2. Run the checks and note any failure: `bun run typecheck`, `bun run lint`,
    `bun run format:check`, `bun run test`, `bun run build`.
 3. Check the diff against, in this order:
-   - `docs/requirements.md` – does it serve a requirement (R1–R9)? Anything out of scope?
+   - `docs/requirements.md` – does it serve a requirement (R1–R10)? Anything out of scope?
    - `docs/decisions/` – does it contradict an ADR? Does it need a new one?
    - `AGENTS.md` – domain rules (Prague time zone, cutoff, availability in a
      transaction, bake plan formula, money, phone normalisation), conventions, UI rules.

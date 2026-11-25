@@ -10,6 +10,9 @@ The original request. Everything else in `docs/` is derived from it.
 >
 > Build a solution for them.
 
+> **This is a demo.** The bakery, its owner and its customers are imagined
+> from the brief above; the app is a working demo, not a product in use.
+
 ## What the owner actually needs
 
 The owner asked for help managing reservations. The two real costs behind

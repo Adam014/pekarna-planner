@@ -15,10 +15,23 @@ reservations, customers reserve online, and the app works out what to bake and
 what to hand out each day. The code, the commits and the docs must stay
 clean, and every decision must be explainable.
 
+## This is a demo, not a live product
+
+Pekárna Planner is a working demo built from a short brief, not software a
+real bakery runs on. There is no real bakery, no real customers and no real
+staff. Work with that in mind:
+
+- Build it the way a real product would be built (security, tests, clean
+  code), but keep the scope of a demo: the requirements, nothing more.
+- Demo data and accounts are made up (`bun run db:seed`). A real bakery would
+  have one account per person; the demo has one owner and one staff account.
+- When a decision is made only because this is a demo, say so in the ADR or
+  README and write what a real product would do instead.
+
 ## Sources of truth (in this order)
 
 1. `docs/brief.md` – the problem and the assumptions behind it.
-2. `docs/requirements.md` – scope (R1–R9). Nothing outside it gets built.
+2. `docs/requirements.md` – scope (R1–R10). Nothing outside it gets built.
 3. `docs/decisions/` – Architecture Decision Records (MADR). Follow them; to
    change one, write a new ADR that supersedes it.
 4. This file – stack, domain rules, conventions, process.
@@ -54,7 +67,8 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   runner. Tests run with `TZ=America/New_York` on purpose.
 - `bun run build` – production build (includes type checking)
 - `bun run db:generate` – SQL migration from the schema; `db:migrate` applies
-  it; `db:studio` browses the data
+  it; `db:seed` creates the demo accounts; `db:studio` browses the data
+- After changing `src/lib/auth-config.ts`: `bunx auth@1.7.28 generate --config src/lib/auth.ts --output src/lib/db/schema/auth.ts`, then `db:generate`
 
 ## Layout (as in our other Next.js apps)
 
@@ -69,7 +83,10 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - `src/lib/validators/` – Zod schemas shared by forms and services
 - `src/lib/db/` – Drizzle client (`index.ts`), `schema/` (one file per table
   group), `migrations/` (generated SQL, committed), seed script
-- `src/lib/auth.ts` / `auth-client.ts` – Better Auth server and client
+- `src/lib/auth-config.ts` – the Better Auth config (factory, tested in
+  `auth-config.test.ts`); `src/lib/auth.ts` / `auth-client.ts` – server and client;
+  `src/lib/permissions.ts` – roles; `src/lib/session.ts` – `requireUser()`
+- `src/proxy.ts` – optimistic redirect to the login for staff URLs (cookie only)
 
 ## Domain rules (easy to get wrong)
 
@@ -88,6 +105,11 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   `Intl.NumberFormat('cs-CZ')`.
 - **Phone numbers:** normalise to E.164 (+420…) before saving and searching.
 - Status flow: `reserved → picked_up | no_show | cancelled`. Nothing else.
+- **Auth (ADR 0006):** every staff page and every service calls
+  `requireUser()` (or `requireUser("owner")`) on the server; hiding a link is
+  not a check. With Cache Components, read the session inside a `<Suspense>`
+  in the page, never at the top of a layout or page. No sign-up; accounts come
+  from `bun run db:seed`.
 
 ## Conventions
 
