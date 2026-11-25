@@ -4,6 +4,8 @@ The internal tool of a small bakery. Staff record phone reservations in
 seconds, customers reserve online through a link, and the app works out what
 to bake and what to hand out each day.
 
+**Live:** https://pekarna.stadnik.dev
+
 > Status: scaffolded (Next.js, Postgres, tooling). Features follow
 > `docs/requirements.md` step by step. This README grows with the code.
 
