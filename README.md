@@ -62,3 +62,5 @@ checkable rather than trusted:
 ## Decisions
 
 1. [Record architecture decisions as MADR](docs/decisions/0001-record-decisions-as-madr.md)
+2. [Host on Vercel with Neon Postgres](docs/decisions/0002-vercel-and-neon-postgres.md)
+3. [Drizzle ORM over a node-postgres pool](docs/decisions/0003-drizzle-and-node-postgres-pool.md)

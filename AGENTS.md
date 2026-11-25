@@ -16,13 +16,15 @@ clean, and every decision must be explainable.
    (gitignored, may be missing in a fresh clone). Read the report before
    proposing tooling or architecture changes.
 
-## Stack (proposed, confirm in ADR 0001 when scaffolding)
+## Stack
 
 - Next.js (App Router) + React + TypeScript strict, Bun as package manager
-- PostgreSQL + Drizzle ORM, Better Auth (email + password), Zod
+- PostgreSQL (Neon in production, Docker locally) + Drizzle ORM over a `pg`
+  Pool with `attachDatabasePool` (ADR 0003)
+- Better Auth (email + password), Zod
 - Tailwind CSS + shadcn/ui
-- Vitest for logic, Playwright for the main flows
-- Deploy: Vercel + Neon (or own Dokploy), decided in an ADR
+- Vitest for logic and services, Playwright for the main flows
+- Hosting: Vercel, domain `pekarna.stadnik.dev` via Cloudflare DNS (ADR 0002)
 
 Check every version and API against the official docs or the npm registry at
 scaffold time, not from memory.
