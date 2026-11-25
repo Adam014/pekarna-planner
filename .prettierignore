@@ -1,0 +1,5 @@
+bun.lock
+.next
+next-env.d.ts
+src/lib/db/migrations
+docs/research

@@ -24,12 +24,12 @@ bake plan the baker never has to work out by hand.
 
 ## Assumptions (to confirm with the owner on day one)
 
-| Assumption | Why it matters |
-| --- | --- |
-| One shop, 10–40 products, tens of reservations a day | No multi-branch, no scaling work |
-| Reservations are for pickup, usually the next day, paid in the shop | No payments, no e-shop |
-| Orders close at a cutoff (default: day before at 18:00) | The baker needs a final plan in the evening |
-| Some customers will keep calling (older people) | Fast staff entry matters as much as the online form |
-| The bakery also bakes for walk-in sales | Plan = reservations + a buffer per product |
-| Regulars (cafés, canteens) order the same thing every week | Standing orders remove the most calls |
-| Staff use a tablet or laptop by the phone; the baker wants paper | Touch-friendly UI and a print view |
+| Assumption                                                          | Why it matters                                      |
+| ------------------------------------------------------------------- | --------------------------------------------------- |
+| One shop, 10–40 products, tens of reservations a day                | No multi-branch, no scaling work                    |
+| Reservations are for pickup, usually the next day, paid in the shop | No payments, no e-shop                              |
+| Orders close at a cutoff (default: day before at 18:00)             | The baker needs a final plan in the evening         |
+| Some customers will keep calling (older people)                     | Fast staff entry matters as much as the online form |
+| The bakery also bakes for walk-in sales                             | Plan = reservations + a buffer per product          |
+| Regulars (cafés, canteens) order the same thing every week          | Standing orders remove the most calls               |
+| Staff use a tablet or laptop by the phone; the baker wants paper    | Touch-friendly UI and a print view                  |

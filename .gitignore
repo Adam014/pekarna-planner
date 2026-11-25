@@ -21,3 +21,11 @@ CLAUDE.local.md
 
 # Local research notes
 docs/research/
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+/coverage

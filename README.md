@@ -4,8 +4,20 @@ The internal tool of a small bakery. Staff record phone reservations in
 seconds, customers reserve online through a link, and the app works out what
 to bake and what to hand out each day.
 
-> Status: specification and workflow are in place; the app is not scaffolded
-> yet. This README grows with the code.
+> Status: scaffolded (Next.js, Postgres, tooling). Features follow
+> `docs/requirements.md` step by step. This README grows with the code.
+
+## Run it locally
+
+Requires [Bun](https://bun.sh) and Docker.
+
+```sh
+bun install
+cp .env.example .env.local
+bun run db:up          # Postgres 17 in Docker
+bun run db:migrate
+bun run dev            # http://localhost:3000
+```
 
 ## The problem
 
@@ -19,15 +31,15 @@ and a bake plan nobody computes by hand. Assumptions and reasoning:
 
 ## Where to look
 
-| What                   | Where                                                    |
-| ---------------------- | -------------------------------------------------------- |
-| Problem and assumptions | [`docs/brief.md`](docs/brief.md)                        |
-| Scope (R1–R9)          | [`docs/requirements.md`](docs/requirements.md)           |
-| Decisions and why      | [`docs/decisions/`](docs/decisions/) (below)             |
-| Where the AI was wrong | [`docs/ai-log.md`](docs/ai-log.md)                       |
-| Rules for every change | [`AGENTS.md`](AGENTS.md)                                 |
-| AI agent setup         | [`CLAUDE.md`](CLAUDE.md), [`.claude/`](.claude/)         |
-| CI                     | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)   |
+| What                    | Where                                                  |
+| ----------------------- | ------------------------------------------------------ |
+| Problem and assumptions | [`docs/brief.md`](docs/brief.md)                       |
+| Scope (R1–R9)           | [`docs/requirements.md`](docs/requirements.md)         |
+| Decisions and why       | [`docs/decisions/`](docs/decisions/) (below)           |
+| Where the AI was wrong  | [`docs/ai-log.md`](docs/ai-log.md)                     |
+| Rules for every change  | [`AGENTS.md`](AGENTS.md)                               |
+| AI agent setup          | [`CLAUDE.md`](CLAUDE.md), [`.claude/`](.claude/)       |
+| CI                      | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
 
 ## How it is built
 
@@ -64,3 +76,4 @@ checkable rather than trusted:
 1. [Record architecture decisions as MADR](docs/decisions/0001-record-decisions-as-madr.md)
 2. [Host on Vercel with Neon Postgres](docs/decisions/0002-vercel-and-neon-postgres.md)
 3. [Drizzle ORM over a node-postgres pool](docs/decisions/0003-drizzle-and-node-postgres-pool.md)
+4. [Bun, oxlint, Prettier and Vitest for tooling](docs/decisions/0004-bun-oxlint-prettier-vitest.md)

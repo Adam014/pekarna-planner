@@ -9,7 +9,7 @@ agent edits to load):
 
 1. Run the review pipeline from `/review-change` step 6 with the brief
    "Review `.claude/review-evals/cases/<file>` as if it were new code in
-   `src/domain/`", once per case.
+   `src/lib/domain/`", once per case.
 2. Compare the verifier's **Confirmed** list with `expected.md`. Pass/fail per
    case; read the transcripts, not just the summary.
 3. When a review misses a real defect in normal work, add it here as a case.

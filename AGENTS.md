@@ -1,3 +1,13 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
 # AGENTS.md
 
 Pekárna Planner is the internal tool of a small bakery: staff record phone
@@ -26,8 +36,40 @@ clean, and every decision must be explainable.
 - Vitest for logic and services, Playwright for the main flows
 - Hosting: Vercel, domain `pekarna.stadnik.dev` via Cloudflare DNS (ADR 0002)
 
-Check every version and API against the official docs or the npm registry at
-scaffold time, not from memory.
+Check every version and API against the official docs, the package's types in
+`node_modules` or the npm registry, not from memory. Next.js docs for the
+installed version are in `node_modules/next/dist/docs/`.
+
+## Commands
+
+Bun is the package manager and script runner (`packageManager` in `package.json`).
+
+- `bun install` – install dependencies (commit `bun.lock`)
+- `bun run db:up` / `bun run db:down` – local Postgres in Docker (`docker-compose.yml`)
+- `cp .env.example .env.local` – local `DATABASE_URL`
+- `bun run dev` – Next.js dev server
+- `bun run typecheck` – route types + `tsc --noEmit`
+- `bun run lint` – oxlint; `bun run format` / `format:check` – Prettier
+- `bun run test` / `test:watch` – Vitest. Never `bun test`: it runs Bun's own
+  runner. Tests run with `TZ=America/New_York` on purpose.
+- `bun run build` – production build (includes type checking)
+- `bun run db:generate` – SQL migration from the schema; `db:migrate` applies
+  it; `db:studio` browses the data
+
+## Layout (as in our other Next.js apps)
+
+- `src/app/` – routes. `(staff)` route group behind login, public order page
+  outside it. Pages and server actions stay thin and call services.
+- `src/components/ui/` – shadcn/ui primitives; feature components next to them
+  in `src/components/<feature>/`
+- `src/lib/domain/` – pure business logic (bake plan, availability, cutoff,
+  phone numbers), no I/O, fully unit tested
+- `src/lib/services/` – one `<feature>.service.ts` per feature: checks the
+  session and role, validates input, calls the domain, reads and writes the DB
+- `src/lib/validators/` – Zod schemas shared by forms and services
+- `src/lib/db/` – Drizzle client (`index.ts`), `schema/` (one file per table
+  group), `migrations/` (generated SQL, committed), seed script
+- `src/lib/auth.ts` / `auth-client.ts` – Better Auth server and client
 
 ## Domain rules (easy to get wrong)
 
@@ -52,7 +94,8 @@ scaffold time, not from memory.
 - Code, file names, comments and docs in English; UI text in Czech.
 - TypeScript strict with `noUncheckedIndexedAccess`; no `any`, no non-null `!`.
 - Business logic (bake plan, availability, cutoff) lives in pure functions
-  with unit tests; route handlers and server actions stay thin.
+  in `src/lib/domain/` with unit tests; route handlers and server actions stay
+  thin.
 - UI: text never smaller than 14 px; every clickable element has
   `cursor: pointer`; no icons on decorative background shapes. Touch targets
   at least 44 px (tablet by the phone). Print view for the bake plan.
