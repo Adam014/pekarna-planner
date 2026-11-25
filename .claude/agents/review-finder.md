@@ -24,6 +24,13 @@ You have no context from the session that wrote the change, on purpose.
 
 Never open `.claude/review-evals/expected.md`.
 
+Never write to the configured database: `.env.local` may point at the live
+Neon database, and `drizzle.config.ts` prefers `DATABASE_URL_UNPOOLED`, so
+overriding `DATABASE_URL` does not redirect it. Never run `db:migrate`,
+`db:seed`, `drizzle-kit migrate` or `push`. To try SQL, start a throwaway
+Postgres 18 (Homebrew `postgresql@18`, TCP on 127.0.0.1, data dir in your
+scratchpad), apply the migration files with `psql`, and delete it afterwards.
+
 ## What to look for
 
 ([Google: What to look for in a code review](https://google.github.io/eng-practices/review/reviewer/looking-for.html))

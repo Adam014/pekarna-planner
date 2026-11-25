@@ -95,12 +95,27 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   Test around midnight and the DST switch.
 - **Cutoff:** a reservation for day D closes at D−1 18:00 by default (setting).
   Staff may override the cutoff for phone orders; the online form may not.
-- **Availability:** `dailyLimit − reserved` for that product and day,
-  including standing orders. Check it inside the same DB transaction that
-  saves the reservation, so two customers cannot overbook the last pieces.
+- **Availability:** `dailyLimit −` pieces in `reserved` and `picked_up`
+  reservations for that product and day (standing order days are
+  reservations too). Check it inside the same DB transaction that saves the
+  reservation, after locking the product rows (`FOR UPDATE`, sorted by id), so
+  two customers cannot overbook the last pieces (ADR 0007). The same applies
+  to every write that adds demand, including standing order days.
+  Postgres returns `sum()` as `bigint`, which node-postgres reads as a string:
+  cast it (`::int` or `mapWith(Number)`).
+- **Orders keep a copy** of the customer's name and phone and of each
+  product's name and price; never read them live for a past order (ADR 0007).
+- **Standing orders are templates** that create ordinary reservations
+  (`source = 'standing_order'`) 28 days ahead: on save, by a daily job, and
+  when the bake plan or the day's list is opened.
+  Editing one recreates only its future `reserved` days still before the
+  cutoff. Creating days must be safe to run twice (`ON CONFLICT DO NOTHING`).
+  Nobody books more than 21 days ahead (ADR 0007).
+- **Dates:** the pickup day is a Postgres `date`, a `'YYYY-MM-DD'` string in
+  code; never turn it into a JS `Date`.
 - **Bake plan** for day D, per product baked on D: sum of quantities of
-  reservations with status `reserved` or `picked_up` + standing orders for D's
-  weekday + the product's buffer. Cancelled and no-show do not count.
+  reservations with status `reserved` or `picked_up` (standing order days
+  included) + the product's buffer. Cancelled and no-show do not count.
 - **Money:** CZK as integer haléře (or whole crowns); no floats. Format with
   `Intl.NumberFormat('cs-CZ')`.
 - **Phone numbers:** normalise to E.164 (+420…) before saving and searching.
@@ -143,7 +158,10 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
    becomes one Conventional Commit (`feat:`, `fix:`, `chore:`, `docs:`,
    `test:`, `ci:`).
 3. **Verify, don't guess.** Versions, APIs and config come from official docs.
-   If something cannot be verified, say so.
+   Every design decision rests on research of quality sources (official docs,
+   standards, recognised authors), saved in `docs/research/reports/` and cited
+   in the ADR. Never call something a standard from memory. If something
+   cannot be verified, say so.
 4. **Logic is test-first.** Bake plan, availability and cutoff get their tests
    before the implementation.
 5. **Review before proposing a commit** (`/review-change`): check the diff

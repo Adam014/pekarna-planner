@@ -86,3 +86,4 @@ checkable rather than trusted:
 4. [Bun, oxlint, Prettier and Vitest for tooling](docs/decisions/0004-bun-oxlint-prettier-vitest.md)
 5. [A sober design system on shadcn/ui](docs/decisions/0005-design-system-on-shadcn.md)
 6. [Better Auth with two staff roles](docs/decisions/0006-better-auth-with-staff-roles.md)
+7. [Reservation data model: orders keep a copy, standing orders create reservations](docs/decisions/0007-reservation-data-model.md)
