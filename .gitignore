@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+dist
+coverage
+*.log
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Playwright
+test-results/
+playwright-report/
+
+# Claude Code (personal)
+CLAUDE.local.md
+.claude/settings.local.json
