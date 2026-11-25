@@ -79,3 +79,4 @@ checkable rather than trusted:
 2. [Host on Vercel with Neon Postgres](docs/decisions/0002-vercel-and-neon-postgres.md)
 3. [Drizzle ORM over a node-postgres pool](docs/decisions/0003-drizzle-and-node-postgres-pool.md)
 4. [Bun, oxlint, Prettier and Vitest for tooling](docs/decisions/0004-bun-oxlint-prettier-vitest.md)
+5. [A sober design system on shadcn/ui](docs/decisions/0005-design-system-on-shadcn.md)

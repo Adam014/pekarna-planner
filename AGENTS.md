@@ -99,6 +99,15 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - UI: text never smaller than 14 px; every clickable element has
   `cursor: pointer`; no icons on decorative background shapes. Touch targets
   at least 44 px (tablet by the phone). Print view for the bake plan.
+- Design system (ADR 0005, reference page `/design`): a sober internal tool.
+  shadcn/ui (Radix) components in `src/components/ui/`, tokens only in
+  `src/app/globals.css`, never hard-coded colours. Warm neutrals, near-black
+  primary, one accent `crust`. Reservation states use badge variants: `info`
+  reserved, `success` picked up, `warning` no-show, `secondary` cancelled.
+  Font Allo (OFL, `src/app/_fonts/`) for text, Geist Mono for code; numbers
+  in tables use `tabular-nums`. Dark mode follows the system; no theme switch.
+  Hide controls in print with `data-print="hide"`. Adding a shadcn component:
+  `bunx shadcn@latest add <name>`, then raise sizes to these rules.
 - Keep it simple: no abstraction without a second use, no speculative options.
 - No hacks. Fix the cause with the documented approach; never hide a symptom
   (empty `catch`, `as` casts, `!important`, timeouts, disabled lint rules).
