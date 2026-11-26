@@ -22,7 +22,7 @@ bun install
 cp .env.example .env.local
 bun run db:up          # Postgres 18 in Docker
 bun run db:migrate
-bun run db:seed        # demo accounts, passwords from .env.local
+bun run db:seed        # demo accounts (passwords from .env.local) and data
 bun run dev            # http://localhost:3000
 ```
 

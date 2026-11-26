@@ -70,7 +70,8 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
   separate local database; `test/db.ts` refuses anything not on localhost.
 - `bun run build` – production build (includes type checking)
 - `bun run db:generate` – SQL migration from the schema; `db:migrate` applies
-  it; `db:seed` creates the demo accounts; `db:studio` browses the data
+  it; `db:seed` creates the demo accounts and data (`-- --reset` moves the
+  data to the current week); `db:studio` browses the data
 - After changing `src/lib/auth-config.ts`: `bunx auth@1.7.28 generate --config src/lib/auth.ts --output src/lib/db/schema/auth.ts`, then `db:generate`
 
 ## Layout (as in our other Next.js apps)

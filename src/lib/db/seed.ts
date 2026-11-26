@@ -1,4 +1,6 @@
-// Creates the demo accounts. Idempotent: existing accounts are left alone.
+// Creates the demo accounts and the demo data (R8). Idempotent: existing
+// accounts are left alone, and the data is added only to an empty catalogue.
+// `--reset` first deletes all demo data, to move the demo to the current week.
 // Passwords come from the environment so they never land in the repository.
 import { loadEnvConfig } from "@next/env";
 
@@ -9,6 +11,7 @@ const { MIN_PASSWORD_LENGTH } = await import("@/lib/auth-config");
 const { db } = await import("@/lib/db");
 const { user } = await import("@/lib/db/schema");
 const { eq } = await import("drizzle-orm");
+const { resetDemo, seedDemo } = await import("@/lib/db/demo-data");
 
 const accounts = [
   {
@@ -54,5 +57,21 @@ for (const account of accounts) {
   });
   console.log(`created ${account.email} (${account.role})`);
 }
+
+const [staff] = await db
+  .select({ id: user.id })
+  .from(user)
+  .where(eq(user.email, "pekar@pekarna.com"));
+if (!staff) throw new Error("The staff account is missing.");
+if (process.argv.includes("--reset")) {
+  await resetDemo(db);
+  console.log("deleted demo data");
+}
+const demo = await seedDemo(db, Temporal.Now.instant(), staff.id);
+console.log(
+  demo === "created"
+    ? "created demo data"
+    : "exists  demo data (products found; --reset to replace it)",
+);
 
 process.exit(0);
