@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "schedules": {
+    "fill-standing-orders": {
+      "schedule": "0 3 * * *",
+      "timezone": "Europe/Prague",
+      "path": "/api/jobs/fill-standing-orders",
+      "requestMethod": "POST"
+    }
+  }
+}

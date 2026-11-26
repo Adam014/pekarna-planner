@@ -116,7 +116,8 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - **Orders keep a copy** of the customer's name and phone and of each
   product's name and price; never read them live for a past order (ADR 0007).
 - **Standing orders are templates** that create ordinary reservations
-  (`source = 'standing_order'`) 28 days ahead: on save, by a daily job, and
+  (`source = 'standing_order'`) 28 days ahead: on save, by a daily job
+  (`vercel.json` schedule, route checks `CRON_SECRET`), and
   when the bake plan or the day's list is opened.
   Editing one recreates only its future `reserved` days still before the
   cutoff. Creating days must be safe to run twice (`ON CONFLICT DO NOTHING`).

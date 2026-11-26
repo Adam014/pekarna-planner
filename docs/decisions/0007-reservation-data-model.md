@@ -41,9 +41,10 @@ and the plan, availability and the day's list only read reservations.
 - **Standing orders** are a template: customer, weekdays, time, items. Its
   days are ordinary reservations with `source = 'standing_order'`, created
   28 days ahead when the template is saved, by a daily job (Vercel
-  Schedules), and again whenever staff open the bake plan or the day's list,
-  so a missed job run fills itself in. Shopify creates "a new order" for each cycle of a subscription
-  contract.
+  Schedules between 3:00 and 3:15 Prague time, calling a route that checks
+  `CRON_SECRET`), and again whenever staff open the bake plan or the day's
+  list, so a missed job run fills itself in. Shopify creates "a new order"
+  for each cycle of a subscription contract.
 - **Editing a template** deletes and recreates only its future `reserved`
   days still before the cutoff; Recharge regenerates upcoming charges after a
   subscription change the same way. Cancelling one day cancels that
