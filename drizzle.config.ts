@@ -1,5 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "drizzle-kit";
+import { withVerifiedTls } from "./src/lib/db/connection-string";
 
 // Same .env files as Next.js, so the CLI and the app use one DATABASE_URL.
 loadEnvConfig(process.cwd());
@@ -14,7 +15,7 @@ export default defineConfig({
   schema: "./src/lib/db/schema/index.ts",
   out: "./src/lib/db/migrations",
   dialect: "postgresql",
-  dbCredentials: { url },
+  dbCredentials: { url: withVerifiedTls(url) },
   strict: true,
   verbose: true,
 });
