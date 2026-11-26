@@ -1,5 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { loadTestEnv } from "./test/env";
+
+loadTestEnv();
 
 const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
 // West of UTC and of Prague, so code that uses the machine's time zone

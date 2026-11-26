@@ -66,8 +66,11 @@ Bun is the package manager and script runner (`packageManager` in `package.json`
 - `bun run test` / `test:watch` – Vitest unit tests. Never `bun test`: it
   runs Bun's own runner. Tests run with `TZ=America/New_York` on purpose.
 - `bun run test:db` – service tests (`*.db.test.ts`) on a real Postgres 18 at
-  `TEST_DATABASE_URL`. They drop and rebuild its schema, so it must be a
+  `TEST_DATABASE_URL` (`.env.test`). They drop and rebuild its schema, so it must be a
   separate local database; `test/db.ts` refuses anything not on localhost.
+- `bun run test:e2e` – Playwright tests of the main flows (`e2e/`) against a
+  production build on port 3100 and `E2E_DATABASE_URL` (`.env.test`), another
+  local database that every run rebuilds. Once: `bunx playwright install chromium`.
 - `bun run build` – production build (includes type checking)
 - `bun run db:generate` – SQL migration from the schema; `db:migrate` applies
   it; `db:seed` creates the demo accounts and data (`-- --reset` moves the

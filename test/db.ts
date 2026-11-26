@@ -8,25 +8,30 @@ import { Pool } from "pg";
 import * as schema from "../src/lib/db/schema";
 
 export function testDatabaseUrl(): string {
-  const url = process.env.TEST_DATABASE_URL;
+  return localDatabaseUrl("TEST_DATABASE_URL");
+}
+
+/** The URL in that variable, refused unless it is a Postgres on this machine. */
+export function localDatabaseUrl(variable: string): string {
+  const url = process.env[variable];
   if (!url) {
     throw new Error(
-      "TEST_DATABASE_URL is not set: a local Postgres 18, e.g. from docker-compose.yml.",
+      `${variable} is not set: a local Postgres 18, e.g. from docker-compose.yml.`,
     );
   }
   const parsed = new URL(url);
   // node-postgres takes ?host= over the host in the URL, so refuse it.
   if (parsed.searchParams.has("host") || parsed.searchParams.has("hostaddr")) {
-    throw new Error("TEST_DATABASE_URL must not set host in the query");
+    throw new Error(`${variable} must not set host in the query`);
   }
   if (!["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname)) {
-    throw new Error(`TEST_DATABASE_URL must be local, not ${parsed.hostname}`);
+    throw new Error(`${variable} must be local, not ${parsed.hostname}`);
   }
   return url;
 }
 
-export function connect() {
-  const pool = new Pool({ connectionString: testDatabaseUrl(), max: 30 });
+export function connect(url = testDatabaseUrl()) {
+  const pool = new Pool({ connectionString: url, max: 30 });
   return { pool, db: drizzle(pool, { schema }) };
 }
 

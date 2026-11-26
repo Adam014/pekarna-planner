@@ -40,6 +40,8 @@ export function createAuth(
         "pekarna.stadnik.dev",
         "pekarna-planner.vercel.app",
         "localhost:3000",
+        // The end-to-end tests run their own server here (playwright.config.ts).
+        "localhost:3100",
       ],
       fallback: "https://pekarna.stadnik.dev",
     },

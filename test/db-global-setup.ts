@@ -4,7 +4,11 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { connect } from "./db";
 
 export default async function setup() {
-  const { pool, db } = connect();
+  await rebuild(connect());
+}
+
+/** Empties the database and applies every migration. */
+export async function rebuild({ pool, db }: ReturnType<typeof connect>) {
   try {
     await db.execute(sql`drop schema if exists public cascade`);
     await db.execute(sql`drop schema if exists drizzle cascade`);
