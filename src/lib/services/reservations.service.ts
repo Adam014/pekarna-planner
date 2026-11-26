@@ -4,14 +4,16 @@
  * session (`requireUser`).
  */
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/types";
 import { reservation, reservationItem } from "../db/schema";
 import { normalizePhone } from "../domain/phone";
 import {
   BOOKING_HORIZON_DAYS,
+  canSetStatus,
   COUNTED_STATUSES,
   ORDER_LINK_DAYS_AFTER_PICKUP,
+  type ReservationSource,
   type ReservationStatus,
 } from "../domain/reservation";
 import {
@@ -211,6 +213,10 @@ async function replayOf(
 export type StatusResult =
   | { status: "updated" }
   | { status: "not_found" }
+  /** Picked up or no-show for a day that has not come yet. */
+  | { status: "too_early" }
+  /** Someone else changed it since the list was loaded. */
+  | { status: "changed" }
   | { status: "sold_out"; overLimit: OverLimit[] };
 
 /**
@@ -222,6 +228,9 @@ export async function setReservationStatus(
   db: Db,
   reservationId: string,
   status: ReservationStatus,
+  now: Temporal.Instant,
+  /** The status the staff member saw; a different one means a stale list. */
+  expected?: ReservationStatus,
 ): Promise<StatusResult> {
   return db.transaction(async (tx) => {
     const [current] = await tx
@@ -230,6 +239,10 @@ export async function setReservationStatus(
       .where(eq(reservation.id, reservationId))
       .for("update");
     if (!current) return { status: "not_found" };
+    if (expected && current.status !== expected) return { status: "changed" };
+    if (!canSetStatus(status, current.pickupDate, today(now))) {
+      return { status: "too_early" };
+    }
 
     const counts = (s: ReservationStatus) =>
       COUNTED_STATUSES.some((c) => c === s);
@@ -253,6 +266,67 @@ export async function setReservationStatus(
       .set({ status })
       .where(eq(reservation.id, reservationId));
     return { status: "updated" };
+  });
+}
+
+export type DayReservation = {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  pickupTime: string | null;
+  source: ReservationSource;
+  status: ReservationStatus;
+  note: string | null;
+  items: { productName: string; quantity: number }[];
+  /** In haléře. */
+  total: number;
+};
+
+/**
+ * The reservations to hand out on a day (R5), by pickup time; those without
+ * a time come last. Names and prices are the copies saved with the order.
+ */
+export async function dayReservations(
+  db: Db,
+  date: string,
+): Promise<DayReservation[]> {
+  const rows = await db
+    .select()
+    .from(reservation)
+    .where(eq(reservation.pickupDate, date))
+    .orderBy(
+      sql`${reservation.pickupTime} asc nulls last`,
+      sql`${reservation.customerName} collate "cs-CZ-x-icu"`,
+      asc(reservation.createdAt),
+    );
+  if (rows.length === 0) return [];
+  const items = await db
+    .select()
+    .from(reservationItem)
+    .where(
+      inArray(
+        reservationItem.reservationId,
+        rows.map((r) => r.id),
+      ),
+    )
+    .orderBy(sql`${reservationItem.productName} collate "cs-CZ-x-icu"`);
+
+  return rows.map((r) => {
+    const own = items.filter((i) => i.reservationId === r.id);
+    return {
+      id: r.id,
+      customerName: r.customerName,
+      customerPhone: r.customerPhone,
+      pickupTime: r.pickupTime?.slice(0, 5) ?? null,
+      source: r.source,
+      status: r.status,
+      note: r.note,
+      items: own.map((i) => ({
+        productName: i.productName,
+        quantity: i.quantity,
+      })),
+      total: own.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0),
+    };
   });
 }
 

@@ -104,6 +104,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Native controls such as the date picker follow the dark theme. */
+    color-scheme: dark;
     --background: oklch(0.17 0.008 60);
     --foreground: oklch(0.95 0.005 80);
     --card: oklch(0.21 0.009 60);
@@ -163,6 +165,19 @@
   html {
     @apply font-sans;
   }
+}
+
+/*
+ * Sonner's own CSS is unlayered with 12–13 px text and 24 px buttons, so it
+ * beats Tailwind's layers; raised here to the project rules (14 px, 44 px).
+ */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  font-size: var(--text-sm);
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 2.75rem;
+  padding-inline: 1rem;
+  font-size: var(--text-sm);
 }
 
 /* The bake plan and pickup list are printed for the baker. */

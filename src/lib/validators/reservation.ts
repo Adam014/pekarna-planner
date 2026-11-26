@@ -48,11 +48,15 @@ export const standingOrderInput = z.object({
 });
 export type StandingOrderInput = z.infer<typeof standingOrderInput>;
 
-/** Staff mark a reservation on "Dnes" (R5). */
+/** Staff mark a reservation on "Dnes" (R5); `from` is what they saw. */
 export const statusInput = z.object({
   reservationId: z.uuid(),
+  from: z.enum(RESERVATION_STATUSES),
   status: z.enum(RESERVATION_STATUSES),
 });
 
 /** The id of a standing order being edited or ended. */
 export const standingOrderId = z.uuid();
+
+/** The day shown on "Dnes" (`?den=YYYY-MM-DD`). */
+export const dayParam = z.iso.date();

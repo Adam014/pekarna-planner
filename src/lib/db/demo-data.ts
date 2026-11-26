@@ -359,8 +359,8 @@ export async function seedDemo(
     }
     if (
       status &&
-      (await setReservationStatus(db, result.reservationId, status)).status !==
-        "updated"
+      (await setReservationStatus(db, result.reservationId, status, now))
+        .status !== "updated"
     ) {
       throw new Error(`Demo order of ${order.customerName} not marked`);
     }

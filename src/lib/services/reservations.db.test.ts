@@ -15,6 +15,7 @@ import type { ReservationInput } from "../validators/reservation";
 import {
   cancelByToken,
   createReservation,
+  dayReservations,
   orderByToken,
   setReservationStatus,
 } from "./reservations.service";
@@ -42,6 +43,8 @@ function order(overrides: Partial<ReservationInput> = {}): ReservationInput {
   };
 }
 const online = { source: "online" } as const;
+/** Friday 9:00 in Prague: the pickup day of `order()`. */
+const FRIDAY_MORNING = at("2026-11-27T08:00:00Z");
 const phone = () => ({ source: "phone" as const, userId: staffId });
 
 describe("createReservation online", () => {
@@ -329,12 +332,22 @@ describe("setReservationStatus", () => {
     );
     if (created.status !== "created") throw new Error(created.status);
     expect(
-      await setReservationStatus(db, created.reservationId, "picked_up"),
+      await setReservationStatus(
+        db,
+        created.reservationId,
+        "picked_up",
+        FRIDAY_MORNING,
+      ),
     ).toEqual({
       status: "updated",
     });
     expect(
-      await setReservationStatus(db, created.reservationId, "reserved"),
+      await setReservationStatus(
+        db,
+        created.reservationId,
+        "reserved",
+        FRIDAY_MORNING,
+      ),
     ).toEqual({
       status: "updated",
     });
@@ -348,7 +361,12 @@ describe("setReservationStatus", () => {
       WEDNESDAY_MORNING,
     );
     if (first.status !== "created") throw new Error(first.status);
-    await setReservationStatus(db, first.reservationId, "cancelled");
+    await setReservationStatus(
+      db,
+      first.reservationId,
+      "cancelled",
+      FRIDAY_MORNING,
+    );
     await createReservation(
       db,
       order({ items: [{ productId: rohlik.id, quantity: 5 }] }),
@@ -356,7 +374,12 @@ describe("setReservationStatus", () => {
       WEDNESDAY_MORNING,
     );
     expect(
-      await setReservationStatus(db, first.reservationId, "reserved"),
+      await setReservationStatus(
+        db,
+        first.reservationId,
+        "reserved",
+        FRIDAY_MORNING,
+      ),
     ).toMatchObject({
       status: "sold_out",
       overLimit: [{ remaining: 0, requested: 2 }],
@@ -364,10 +387,133 @@ describe("setReservationStatus", () => {
     expect(await pieces(db, rohlik.id, FRIDAY)).toBe(5);
   });
 
+  it("marks picked up or no-show only once the day has come", async () => {
+    const created = await createReservation(
+      db,
+      order(),
+      online,
+      WEDNESDAY_MORNING,
+    );
+    if (created.status !== "created") throw new Error(created.status);
+    const id = created.reservationId;
+    for (const status of ["picked_up", "no_show"] as const) {
+      expect(
+        await setReservationStatus(db, id, status, WEDNESDAY_MORNING),
+      ).toEqual({ status: "too_early" });
+    }
+    expect(
+      await setReservationStatus(db, id, "cancelled", WEDNESDAY_MORNING),
+    ).toEqual({ status: "updated" });
+  });
+
+  it("refuses a change made from a stale list", async () => {
+    const created = await createReservation(
+      db,
+      order(),
+      online,
+      WEDNESDAY_MORNING,
+    );
+    if (created.status !== "created") throw new Error(created.status);
+    const id = created.reservationId;
+    // One tablet marks it picked up; another, still showing "reserved",
+    // marks a no-show.
+    await setReservationStatus(db, id, "picked_up", FRIDAY_MORNING, "reserved");
+    expect(
+      await setReservationStatus(db, id, "no_show", FRIDAY_MORNING, "reserved"),
+    ).toEqual({ status: "changed" });
+    const [row] = await db
+      .select({ status: reservation.status })
+      .from(reservation)
+      .where(eq(reservation.id, id));
+    expect(row?.status).toBe("picked_up");
+  });
+
   it("reports an unknown reservation", async () => {
-    expect(await setReservationStatus(db, randomUUID(), "picked_up")).toEqual({
+    expect(
+      await setReservationStatus(db, randomUUID(), "picked_up", FRIDAY_MORNING),
+    ).toEqual({
       status: "not_found",
     });
+  });
+});
+
+describe("dayReservations", () => {
+  it("lists a day by pickup time, without a time last, with totals", async () => {
+    const chleb = await addProduct(db, { name: "Chléb", price: 6000 });
+    for (const [customerName, pickupTime] of [
+      ["Bez času", undefined],
+      ["Pozdě", "16:30"],
+      ["Brzy", "07:15"],
+    ] as const) {
+      await createReservation(
+        db,
+        order({
+          customerName,
+          pickupTime,
+          items: [
+            { productId: rohlik.id, quantity: 1 },
+            { productId: chleb.id, quantity: 1 },
+          ],
+        }),
+        phone(),
+        WEDNESDAY_MORNING,
+      );
+    }
+    await createReservation(
+      db,
+      order({ pickupDate: "2026-11-28" }),
+      online,
+      WEDNESDAY_MORNING,
+    );
+
+    const day = await dayReservations(db, FRIDAY);
+    expect(day.map((r) => [r.customerName, r.pickupTime])).toEqual([
+      ["Brzy", "07:15"],
+      ["Pozdě", "16:30"],
+      ["Bez času", null],
+    ]);
+    expect(day[0]).toMatchObject({
+      customerPhone: "+420601234567",
+      source: "phone",
+      status: "reserved",
+      items: [
+        { productName: "Chléb", quantity: 1 },
+        { productName: "Rohlík", quantity: 1 },
+      ],
+      total: 6450,
+    });
+  });
+
+  it("sorts names the Czech way", async () => {
+    for (const customerName of ["Zeman", "Čermák", "Chalupa", "Hana"]) {
+      await createReservation(
+        db,
+        order({
+          customerName,
+          pickupTime: "08:00",
+          items: [{ productId: rohlik.id, quantity: 1 }],
+        }),
+        phone(),
+        WEDNESDAY_MORNING,
+      );
+    }
+    expect(
+      (await dayReservations(db, FRIDAY)).map((r) => r.customerName),
+    ).toEqual(["Čermák", "Hana", "Chalupa", "Zeman"]);
+  });
+
+  it("keeps the prices saved with the order", async () => {
+    await createReservation(db, order(), online, WEDNESDAY_MORNING);
+    await db.update(product).set({ price: 900, name: "Rohlík velký" });
+    const [row] = await dayReservations(db, FRIDAY);
+    expect(row).toMatchObject({
+      items: [{ productName: "Rohlík", quantity: 2 }],
+      total: 900,
+    });
+  });
+
+  it("is empty on a day without orders", async () => {
+    expect(await dayReservations(db, "2026-12-24")).toEqual([]);
   });
 });
 
@@ -409,7 +555,7 @@ describe("the customer's link", () => {
     const token = await placed();
     const [row] = await db.select().from(reservation);
     if (!row) throw new Error("No reservation");
-    await setReservationStatus(db, row.id, "picked_up");
+    await setReservationStatus(db, row.id, "picked_up", FRIDAY_MORNING);
     expect(await cancelByToken(db, token, WEDNESDAY_MORNING)).toBe("too_late");
   });
 

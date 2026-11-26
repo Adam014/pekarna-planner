@@ -70,3 +70,14 @@ export function bookableDates(
       (bakeDays === undefined || bakeDays.includes(weekdayOf(date))),
   );
 }
+
+/** "Dnes" can show days up to this far back or ahead of today. */
+export const DAY_VIEW_RANGE_DAYS = 366;
+
+/** The first and last day "Dnes" can show. */
+export function dayViewRange(todayDate: string): { min: string; max: string } {
+  return {
+    min: addDays(todayDate, -DAY_VIEW_RANGE_DAYS),
+    max: addDays(todayDate, DAY_VIEW_RANGE_DAYS),
+  };
+}

@@ -36,3 +36,16 @@ export const ORDER_LINK_DAYS_AFTER_PICKUP = 30;
 
 /** Statuses whose pieces count towards the daily limit and the bake plan. */
 export const COUNTED_STATUSES = ["reserved", "picked_up"] as const;
+
+/**
+ * Picked up and no-show describe what happened at the counter, so they can
+ * be set only once the pickup day has come (today or earlier). A future
+ * order can only be cancelled or put back.
+ */
+export function canSetStatus(
+  status: ReservationStatus,
+  pickupDate: string,
+  today: string,
+): boolean {
+  return status === "reserved" || status === "cancelled" || pickupDate <= today;
+}

@@ -171,7 +171,7 @@ describe("saveStandingOrder", () => {
     const { standingOrderId } = await save();
     const [, tuesday] = await days();
     if (!tuesday) throw new Error("No Tuesday");
-    await setReservationStatus(db, tuesday.id, "cancelled");
+    await setReservationStatus(db, tuesday.id, "cancelled", WEDNESDAY_MORNING);
 
     // Thursday evening: Friday's cutoff has passed.
     const thursday = at("2026-11-26T17:00:00Z");
@@ -279,7 +279,12 @@ describe("fillStandingOrderDays", () => {
       (await fillStandingOrderDays(db, WEDNESDAY_MORNING)).skipped,
     ).toHaveLength(1);
 
-    await setReservationStatus(db, jana.reservationId, "cancelled");
+    await setReservationStatus(
+      db,
+      jana.reservationId,
+      "cancelled",
+      WEDNESDAY_MORNING,
+    );
     expect(
       (await fillStandingOrderDays(db, WEDNESDAY_MORNING)).skipped,
     ).toEqual([]);
