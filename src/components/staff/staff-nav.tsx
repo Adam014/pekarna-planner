@@ -8,6 +8,7 @@ import type { Role } from "@/lib/permissions";
 // Screens are added here as they are built (see docs/requirements.md).
 const ITEMS: { href: string; label: string; roles: readonly Role[] }[] = [
   { href: "/dnes", label: "Dnes", roles: ["staff", "owner"] },
+  { href: "/plan", label: "Plán pečení", roles: ["staff", "owner"] },
 ];
 
 export function StaffNav({ role }: { role: Role }) {

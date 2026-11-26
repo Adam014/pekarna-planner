@@ -4,13 +4,13 @@ import { AutoRefresh } from "@/components/today/auto-refresh";
 import { DayList } from "@/components/today/day-list";
 import { DayNav } from "@/components/today/day-nav";
 import { db } from "@/lib/db";
-import { addDays, dayViewRange, today } from "@/lib/domain/time";
+import { pickDay } from "@/lib/day-param";
+import { addDays, today } from "@/lib/domain/time";
 import { formatPhone } from "@/lib/domain/phone";
 import { formatDay, formatPrice } from "@/lib/format";
 import { dayReservations } from "@/lib/services/reservations.service";
 import { fillStandingOrderDays } from "@/lib/services/standing-orders.service";
 import { requireUser } from "@/lib/session";
-import { dayParam } from "@/lib/validators/reservation";
 
 export const metadata: Metadata = { title: "Dnes" };
 
@@ -34,14 +34,7 @@ async function Day({ den }: { den: string | string[] | undefined }) {
   await requireUser();
   const now = Temporal.Now.instant();
   const todayDate = today(now);
-  const range = dayViewRange(todayDate);
-  const parsed = dayParam.safeParse(den);
-  // Outside the range (or not a date) means today; Postgres and Intl also
-  // misbehave on dates like 0000-01-01.
-  const date =
-    parsed.success && parsed.data >= range.min && parsed.data <= range.max
-      ? parsed.data
-      : todayDate;
+  const { date, min, max } = pickDay(den, todayDate, todayDate);
 
   // Standing order days the daily job may have missed (ADR 0007).
   await fillStandingOrderDays(db, now);
@@ -50,13 +43,16 @@ async function Day({ den }: { den: string | string[] | undefined }) {
   return (
     <>
       <DayNav
+        path="/dnes"
         date={date}
         title={formatDay(date)}
-        isToday={date === todayDate}
+        badge={date === todayDate ? "dnes" : undefined}
+        isDefault={date === todayDate}
+        defaultLabel="Dnes"
         previous={addDays(date, -1)}
         next={addDays(date, 1)}
-        min={range.min}
-        max={range.max}
+        min={min}
+        max={max}
       />
       <DayList
         key={date}

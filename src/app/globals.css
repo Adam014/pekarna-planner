@@ -150,6 +150,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Keeps a focused element clear of the sticky header (WCAG 2.4.11). */
+  html {
+    @media (width >= 40rem) {
+      scroll-padding-top: 5rem;
+    }
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -180,7 +186,12 @@
   font-size: var(--text-sm);
 }
 
-/* The bake plan and pickup list are printed for the baker. */
+/* The bake plan is printed for the baker on one A4. iPad Safari ignores
+   parts of @page, so the sheet carries its own header and needs no colour. */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
 @media print {
   :root {
     color-scheme: light;
@@ -188,6 +199,7 @@
   body {
     background: white;
     color: black;
+    font-size: 12pt;
   }
   [data-print="hide"] {
     display: none !important;

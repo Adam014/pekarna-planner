@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontalIcon } from "lucide-react";
+import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 import {
   useEffect,
   useOptimistic,
@@ -25,6 +25,7 @@ import type {
 } from "@/lib/domain/reservation";
 import { matchesCustomer } from "@/lib/search";
 import type { DayReservation } from "@/lib/services/reservations.service";
+import { cn } from "@/lib/utils";
 import { changedMessage, refusalMessage, STATUS_LABEL } from "./messages";
 
 export type DayRow = DayReservation & {
@@ -48,10 +49,13 @@ const SOURCE: Record<ReservationSource, string> = {
   standing_order: "Trvalá",
 };
 
+type View = "waiting" | "handled";
+
 /**
- * The day's reservations: "K výdeji" first, then the handled ones. A mark
- * shows at once and is undone from the row ("Vrátit") or the toast ("Zpět");
- * the server decides, and a refused mark goes back on its own.
+ * The day's reservations, one view at a time: "K výdeji" (the work left) or
+ * "Vyřízené". A mark shows at once and is undone from the row ("Vrátit") or
+ * the toast ("Zpět"); the server decides, and a refused mark goes back on
+ * its own.
  */
 export function DayList({
   reservations,
@@ -60,6 +64,7 @@ export function DayList({
   reservations: DayRow[];
   isFuture: boolean;
 }) {
+  const [view, setView] = useState<View>("waiting");
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
@@ -84,7 +89,7 @@ export function DayList({
         from,
         status: to,
       });
-      // The used button moved to the other section; keep focus in the list.
+      // The used row left the view; keep focus in the list.
       if (document.activeElement === document.body) listRef.current?.focus();
       const message = refusalMessage(result);
       if (message) {
@@ -110,134 +115,185 @@ export function DayList({
 
   if (reservations.length === 0) {
     return (
-      <p className="text-muted-foreground group-has-data-pending:opacity-50">
+      <p className="py-12 text-center text-muted-foreground transition-opacity group-has-data-pending:opacity-50">
         Na tento den nejsou žádné objednávky.
       </p>
     );
   }
 
-  const shown = rows.filter((r) =>
+  const waiting = rows.filter((r) => r.status === "reserved");
+  const handled = rows.filter((r) => r.status !== "reserved");
+  const shown = (view === "waiting" ? waiting : handled).filter((r) =>
     matchesCustomer({ name: r.customerName, phone: r.customerPhone }, query),
   );
-  const waiting = shown.filter((r) => r.status === "reserved");
-  const handled = shown.filter((r) => r.status !== "reserved");
 
   return (
     <div
       ref={listRef}
       tabIndex={-1}
-      className="flex flex-col gap-6 outline-none transition-opacity group-has-data-pending:opacity-50"
+      className="flex flex-col gap-4 outline-none transition-opacity group-has-data-pending:opacity-50"
     >
-      <div data-print="hide">
-        <label className="sr-only" htmlFor="day-search">
-          Hledat jméno nebo telefon
-        </label>
-        <Input
-          id="day-search"
-          type="search"
-          placeholder="Hledat jméno nebo telefon"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="sm:max-w-sm"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          role="group"
+          aria-label="Zobrazit"
+          className="inline-flex w-fit rounded-lg bg-muted p-1"
+        >
+          <ViewButton
+            active={view === "waiting"}
+            onClick={() => setView("waiting")}
+            label="K výdeji"
+            count={waiting.length}
+          />
+          <ViewButton
+            active={view === "handled"}
+            onClick={() => setView("handled")}
+            label="Vyřízené"
+            count={handled.length}
+          />
+        </div>
+        <div className="relative sm:w-72">
+          <SearchIcon
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            aria-label="Hledat jméno nebo telefon"
+            placeholder="Jméno nebo telefon"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
-      {shown.length === 0 ? (
-        <p className="text-muted-foreground">Hledání nic nenašlo.</p>
+      {shown.length > 0 ? (
+        <ul
+          aria-label={view === "waiting" ? "K výdeji" : "Vyřízené"}
+          className="divide-y overflow-hidden rounded-xl border bg-card"
+        >
+          {shown.map((row) => (
+            <Row key={row.id} row={row} showStatus={view === "handled"}>
+              {view === "waiting" ? (
+                <WaitingActions
+                  row={row}
+                  isFuture={isFuture}
+                  disabled={isPending}
+                  change={change}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => change(row, "reserved")}
+                >
+                  Vrátit
+                </Button>
+              )}
+            </Row>
+          ))}
+        </ul>
       ) : (
-        <>
-          <Section title="K výdeji" rows={waiting}>
-            {(row) => (
-              <WaitingActions
-                row={row}
-                isFuture={isFuture}
-                disabled={isPending}
-                change={change}
-              />
-            )}
-          </Section>
-          <Section title="Vyřízené" rows={handled}>
-            {(row) => (
-              <Button
-                variant="outline"
-                disabled={isPending}
-                onClick={() => change(row, "reserved")}
-              >
-                Vrátit
-              </Button>
-            )}
-          </Section>
-        </>
+        <p className="rounded-xl border border-dashed py-12 text-center text-muted-foreground">
+          {query
+            ? "Hledání nic nenašlo."
+            : view === "waiting"
+              ? "Vše je vyřízené."
+              : "Zatím nic vyřízeného."}
+        </p>
       )}
     </div>
   );
 }
 
-function Section({
-  title,
-  rows,
-  children,
+function ViewButton({
+  active,
+  onClick,
+  label,
+  count,
 }: {
-  title: string;
-  rows: DayRow[];
-  children: (row: DayRow) => React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
 }) {
-  if (rows.length === 0) return null;
   return (
-    <section className="flex flex-col gap-3" aria-label={title}>
-      <h2 className="text-lg font-semibold">
-        {title}{" "}
-        <span className="text-muted-foreground tabular-nums">
-          ({rows.length})
-        </span>
-      </h2>
-      <ul className="flex flex-col gap-3">
-        {rows.map((row) => (
-          <Row key={row.id} row={row}>
-            {children(row)}
-          </Row>
-        ))}
-      </ul>
-    </section>
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "flex h-11 cursor-pointer items-center gap-2 rounded-md px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        active && "bg-background text-foreground shadow-sm",
+      )}
+    >
+      {label}
+      <span className="tabular-nums text-muted-foreground">{count}</span>
+    </button>
   );
 }
 
-function Row({ row, children }: { row: DayRow; children: React.ReactNode }) {
+function Row({
+  row,
+  showStatus,
+  children,
+}: {
+  row: DayRow;
+  showStatus: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <li className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-start sm:gap-4">
-      <div className="w-14 shrink-0 font-semibold tabular-nums">
+    <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 gap-y-2 p-4 sm:grid-cols-[3.5rem_minmax(0,14rem)_1fr_auto_auto] sm:items-center">
+      <span className="font-semibold tabular-nums">
         {row.pickupTime ?? (
-          <span className="text-muted-foreground">kdykoli</span>
+          <span className="font-normal text-muted-foreground">—</span>
+        )}
+      </span>
+
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate font-medium">{row.customerName}</span>
+          {showStatus && (
+            <Badge variant={STATUS_VARIANT[row.status]}>
+              {STATUS_LABEL[row.status]}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <a
+            href={`tel:${row.customerPhone}`}
+            className="inline-flex min-h-11 items-center tabular-nums underline-offset-4 hover:underline"
+          >
+            {row.phoneDisplay}
+          </a>
+          <span aria-hidden>·</span>
+          <span>{SOURCE[row.source]}</span>
+        </div>
+      </div>
+
+      <div className="col-start-2 min-w-0 sm:col-start-auto">
+        <p>
+          {row.items.map((item, i) => (
+            <span key={item.productName} className="whitespace-nowrap">
+              {i > 0 && <span className="text-muted-foreground"> · </span>}
+              <span className="font-medium tabular-nums">
+                {item.quantity}×
+              </span>{" "}
+              {item.productName}
+            </span>
+          ))}
+        </p>
+        {row.note && (
+          <p className="mt-1 text-sm text-muted-foreground">„{row.note}“</p>
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">{row.customerName}</span>
-          <Badge variant={STATUS_VARIANT[row.status]}>
-            {STATUS_LABEL[row.status]}
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            {SOURCE[row.source]}
-          </span>
-        </div>
-        <a
-          href={`tel:${row.customerPhone}`}
-          className="inline-flex min-h-11 w-fit items-center text-sm text-muted-foreground tabular-nums underline-offset-4 hover:underline"
-        >
-          {row.phoneDisplay}
-        </a>
-        <ul className="text-sm">
-          {row.items.map((item) => (
-            <li key={item.productName}>
-              <span className="tabular-nums">{item.quantity}×</span>{" "}
-              {item.productName}
-            </li>
-          ))}
-        </ul>
-        {row.note && <p className="text-sm">Poznámka: {row.note}</p>}
-        <p className="text-sm font-medium tabular-nums">{row.totalDisplay}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2" data-print="hide">
+
+      <span className="col-start-2 text-sm tabular-nums text-muted-foreground sm:col-start-auto sm:text-right">
+        {row.totalDisplay}
+      </span>
+
+      <div className="col-start-2 flex items-center gap-2 sm:col-start-auto sm:justify-end">
         {children}
       </div>
     </li>
@@ -275,7 +331,7 @@ function WaitingActions({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             disabled={disabled}
             aria-label={`Další akce: ${row.customerName}`}
