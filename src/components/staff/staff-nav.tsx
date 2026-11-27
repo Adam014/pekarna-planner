@@ -4,6 +4,7 @@ import {
   CroissantIcon,
   ListChecksIcon,
   PackageIcon,
+  RepeatIcon,
   type LucideIcon,
 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
@@ -33,6 +34,13 @@ const ITEMS: {
     short: "Plán",
     icon: CroissantIcon,
     roles: ["staff", "owner"],
+  },
+  {
+    href: "/trvale",
+    label: "Trvalé objednávky",
+    short: "Trvalé",
+    icon: RepeatIcon,
+    roles: ["owner"],
   },
   {
     href: "/vyrobky",

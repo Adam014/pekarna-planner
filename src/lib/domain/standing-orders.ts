@@ -30,6 +30,21 @@ export function standingOrderDates(
 }
 
 /**
+ * The first day an edit or the end of a standing order changes: tomorrow
+ * while its cutoff has not passed, otherwise the day after. Today and days
+ * past their cutoff are already being baked and stay as they are.
+ */
+export function firstOpenDay(
+  now: Temporal.Instant,
+  cutoffTime: string,
+): string {
+  const tomorrow = addDays(today(now), 1);
+  return isBeforeCutoff(tomorrow, now, cutoffTime)
+    ? tomorrow
+    : addDays(tomorrow, 1);
+}
+
+/**
  * Weekdays of the template on which the product is not baked. The product is
  * left out of those days and the owner is told.
  */

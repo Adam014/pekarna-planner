@@ -19,6 +19,7 @@ export const config = {
     "/dnes/:path*",
     "/nova/:path*",
     "/plan/:path*",
+    "/trvale/:path*",
     "/vyrobky/:path*",
   ],
 };

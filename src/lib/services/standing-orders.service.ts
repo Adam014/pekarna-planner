@@ -5,19 +5,25 @@
  * a day twice changes nothing. A day that does not fit the daily limit is not
  * created and is reported; a later fill creates it once there is room.
  */
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/types";
 import {
   customer,
+  product,
   reservation,
   reservationItem,
   standingOrder,
   standingOrderItem,
 } from "../db/schema";
 import { normalizePhone } from "../domain/phone";
-import { standingOrderDates, unbakedWeekdays } from "../domain/standing-orders";
-import { addDays, isBeforeCutoff, today, weekdayOf } from "../domain/time";
+import {
+  firstOpenDay,
+  standingOrderDates,
+  unbakedWeekdays,
+} from "../domain/standing-orders";
+import { weekdayOf } from "../domain/time";
 import type { StandingOrderInput } from "../validators/reservation";
+import { findOrCreateCustomer } from "./customers";
 import {
   type LockedProduct,
   lockProducts,
@@ -35,13 +41,16 @@ export type NotBaked = {
   productName: string;
 };
 
+/** A day not created because it does not fit the daily limit. */
+export type SkippedDay = OverLimit & { standingOrderId: string };
+
 export type SaveResult =
   | {
       status: "saved";
       standingOrderId: string;
       notBaked: NotBaked[];
       /** Days not created because they do not fit the daily limit. */
-      skipped: OverLimit[];
+      skipped: SkippedDay[];
     }
   | {
       status: "rejected";
@@ -79,13 +88,18 @@ export async function saveStandingOrder(
 
   return db.transaction(async (tx) => {
     await lockStandingOrders(tx);
+    let currentCustomerId: string | null = null;
     if (standingOrderId) {
       const [current] = await tx
-        .select({ active: standingOrder.active })
+        .select({
+          active: standingOrder.active,
+          customerId: standingOrder.customerId,
+        })
         .from(standingOrder)
         .where(eq(standingOrder.id, standingOrderId));
       if (!current) return { status: "rejected", reason: "not_found" };
       if (!current.active) return { status: "rejected", reason: "ended" };
+      currentCustomerId = current.customerId;
     }
 
     const cutoff = await cutoffTime(tx);
@@ -98,15 +112,18 @@ export async function saveStandingOrder(
       return { status: "rejected", reason: "inactive_product" };
     }
 
-    const [owner] = await tx
-      .insert(customer)
-      .values({ name: input.customerName, phone })
-      .onConflictDoUpdate({
-        target: customer.phone,
-        set: { name: input.customerName },
-      })
-      .returning();
-    if (!owner) throw new Error("Upsert returned no row");
+    // A phone that belongs to someone else links the order to them and
+    // keeps their name; only the order's own customer is renamed here.
+    let owner = await findOrCreateCustomer(tx, input.customerName, phone);
+    if (owner.id === currentCustomerId && owner.name !== input.customerName) {
+      const [renamed] = await tx
+        .update(customer)
+        .set({ name: input.customerName })
+        .where(eq(customer.id, owner.id))
+        .returning();
+      if (!renamed) throw new Error("Customer vanished");
+      owner = renamed;
+    }
 
     const values = {
       customerId: owner.id,
@@ -185,7 +202,7 @@ export async function endStandingOrder(
 export async function fillStandingOrderDays(
   db: Db,
   now: Temporal.Instant,
-): Promise<{ skipped: OverLimit[] }> {
+): Promise<{ skipped: SkippedDay[] }> {
   return db.transaction(async (tx) => {
     await lockStandingOrders(tx);
     const templates = await tx
@@ -213,7 +230,7 @@ export async function fillStandingOrderDays(
       ...new Set(items.map((i) => i.productId)),
     ]);
 
-    const skipped: OverLimit[] = [];
+    const skipped: SkippedDay[] = [];
     for (const template of templates) {
       const owner = owners.find((c) => c.id === template.customerId);
       if (!owner) throw new Error(`Customer of ${template.id} is missing`);
@@ -253,7 +270,7 @@ async function createDays(
   products: Map<string, LockedProduct>,
   now: Temporal.Instant,
   cutoff: string,
-): Promise<OverLimit[]> {
+): Promise<SkippedDay[]> {
   const dates = standingOrderDates(template.weekdays, now, cutoff);
   if (dates.length === 0) return [];
   const existing = await tx
@@ -271,7 +288,7 @@ async function createDays(
     missing,
     template.items.map((i) => i.productId),
   );
-  const skipped: OverLimit[] = [];
+  const skipped: SkippedDay[] = [];
 
   for (const date of missing) {
     const dayItems = template.items.flatMap((item) => {
@@ -289,7 +306,9 @@ async function createDays(
       ordered,
     );
     if (over.length > 0) {
-      skipped.push(...over);
+      skipped.push(
+        ...over.map((o) => ({ ...o, standingOrderId: template.id })),
+      );
       continue;
     }
 
@@ -330,17 +349,91 @@ async function deleteOpenDays(
   now: Temporal.Instant,
   cutoff: string,
 ): Promise<void> {
-  const tomorrow = addDays(today(now), 1);
-  const firstOpen = isBeforeCutoff(tomorrow, now, cutoff)
-    ? tomorrow
-    : addDays(tomorrow, 1);
   await tx
     .delete(reservation)
     .where(
       and(
         eq(reservation.standingOrderId, standingOrderId),
         eq(reservation.status, "reserved"),
-        gte(reservation.pickupDate, firstOpen),
+        gte(reservation.pickupDate, firstOpenDay(now, cutoff)),
       ),
     );
+}
+
+export type StandingOrderRow = {
+  id: string;
+  customerName: string;
+  /** E.164. */
+  phone: string;
+  weekdays: number[];
+  /** 'HH:MM', or null without a time. */
+  pickupTime: string | null;
+  note: string | null;
+  active: boolean;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    /** False once the product is off the offer: its days leave it out. */
+    productActive: boolean;
+  }[];
+};
+
+/**
+ * Every standing order for the owner's list: active ones first, each group
+ * by customer name the Czech way. Ended ones stay, their past days point to
+ * them. Items by product name.
+ */
+export async function listStandingOrders(db: Db): Promise<StandingOrderRow[]> {
+  const templates = await db
+    .select({
+      id: standingOrder.id,
+      customerName: customer.name,
+      phone: customer.phone,
+      weekdays: standingOrder.weekdays,
+      pickupTime: standingOrder.pickupTime,
+      note: standingOrder.note,
+      active: standingOrder.active,
+    })
+    .from(standingOrder)
+    .innerJoin(customer, eq(customer.id, standingOrder.customerId))
+    .orderBy(
+      desc(standingOrder.active),
+      sql`${customer.name} collate "cs-CZ-x-icu"`,
+      asc(standingOrder.createdAt),
+    );
+  if (templates.length === 0) return [];
+
+  const items = await db
+    .select({
+      standingOrderId: standingOrderItem.standingOrderId,
+      productId: standingOrderItem.productId,
+      productName: product.name,
+      quantity: standingOrderItem.quantity,
+      productActive: product.active,
+    })
+    .from(standingOrderItem)
+    .innerJoin(product, eq(product.id, standingOrderItem.productId))
+    .where(
+      inArray(
+        standingOrderItem.standingOrderId,
+        templates.map((t) => t.id),
+      ),
+    )
+    .orderBy(sql`${product.name} collate "cs-CZ-x-icu"`);
+
+  return templates.map((t) => ({
+    ...t,
+    weekdays: t.weekdays.toSorted((a, b) => a - b),
+    // '06:45:00' from Postgres; the form and the list show HH:MM.
+    pickupTime: t.pickupTime?.slice(0, 5) ?? null,
+    items: items
+      .filter((i) => i.standingOrderId === t.id)
+      .map((i) => ({
+        productId: i.productId,
+        productName: i.productName,
+        quantity: i.quantity,
+        productActive: i.productActive,
+      })),
+  }));
 }

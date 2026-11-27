@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { standingOrderDates, unbakedWeekdays } from "./standing-orders";
+import {
+  firstOpenDay,
+  standingOrderDates,
+  unbakedWeekdays,
+} from "./standing-orders";
 
 const at = (iso: string) => Temporal.Instant.from(iso);
 
@@ -39,5 +43,39 @@ describe("unbakedWeekdays", () => {
   it("returns the template's days the product is not baked", () => {
     expect(unbakedWeekdays([6, 2, 7], [1, 2, 3, 4, 5])).toEqual([6, 7]);
     expect(unbakedWeekdays([2, 5], [1, 2, 3, 4, 5])).toEqual([]);
+  });
+});
+
+describe("firstOpenDay", () => {
+  it("is tomorrow before the cutoff and the day after once it passed", () => {
+    // Wednesday 2026-11-25 in Prague: 17:59 and 18:00.
+    expect(firstOpenDay(at("2026-11-25T16:59:00Z"), "18:00")).toBe(
+      "2026-11-26",
+    );
+    expect(firstOpenDay(at("2026-11-25T17:00:00Z"), "18:00:00")).toBe(
+      "2026-11-27",
+    );
+  });
+
+  it("counts the day in Prague around midnight", () => {
+    // 23:30 UTC on the 25th is already 00:30 on the 26th in Prague.
+    expect(firstOpenDay(at("2026-11-25T23:30:00Z"), "18:00")).toBe(
+      "2026-11-27",
+    );
+    // 22:59 UTC is still 23:59 on the 25th: past the cutoff for the 26th.
+    expect(firstOpenDay(at("2026-11-25T22:59:00Z"), "18:00")).toBe(
+      "2026-11-27",
+    );
+  });
+
+  it("follows the DST switch", () => {
+    // Saturday 2027-03-27 17:30 CET; the clocks go forward that night.
+    expect(firstOpenDay(at("2027-03-27T16:30:00Z"), "18:00")).toBe(
+      "2027-03-28",
+    );
+    // Saturday 2026-10-24 18:30 CEST: past the cutoff for Sunday.
+    expect(firstOpenDay(at("2026-10-24T16:30:00Z"), "18:00")).toBe(
+      "2026-10-26",
+    );
   });
 });

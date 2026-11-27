@@ -48,6 +48,18 @@ export const standingOrderInput = z.object({
 });
 export type StandingOrderInput = z.infer<typeof standingOrderInput>;
 
+/**
+ * What the "Trvalé objednávky" form sends: without `id` a new standing
+ * order, with one an edit. Weekdays come back sorted.
+ */
+export const standingOrderFormInput = standingOrderInput.extend({
+  id: z.uuid().optional(),
+  weekdays: standingOrderInput.shape.weekdays.transform((days) =>
+    days.toSorted((a, b) => a - b),
+  ),
+});
+export type StandingOrderFormInput = z.input<typeof standingOrderFormInput>;
+
 /** Staff mark a reservation on "Dnes" (R5); `from` is what they saw. */
 export const statusInput = z.object({
   reservationId: z.uuid(),

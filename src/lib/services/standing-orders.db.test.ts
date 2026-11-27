@@ -24,6 +24,7 @@ import {
 import {
   endStandingOrder,
   fillStandingOrderDays,
+  listStandingOrders,
   saveStandingOrder,
 } from "./standing-orders.service";
 
@@ -192,9 +193,14 @@ describe("saveStandingOrder", () => {
     expect(after.map((d) => d.date).at(-1)).toBe("2026-12-22");
   });
 
-  it("keeps one customer per phone and takes the name the owner typed", async () => {
-    await save(template({ customerName: "Kavarna" }));
-    await save(template({ phone: "777123456", weekdays: [1] }));
+  it("keeps one customer per phone and renames only its own customer", async () => {
+    const { standingOrderId } = await save(
+      template({ customerName: "Kavarna" }),
+    );
+    // An edit of the order renames its customer (the owner fixed a typo).
+    await save(template({ customerName: "Kavárna U Mostu" }), standingOrderId);
+    // A new order with a known phone keeps that customer's name.
+    await save(template({ customerName: "Jiný název", weekdays: [1] }));
     const customers = await db.select().from(customer);
     expect(customers).toEqual([
       expect.objectContaining({ name: "Kavárna U Mostu" }),
@@ -204,6 +210,25 @@ describe("saveStandingOrder", () => {
       b.pickupDate.localeCompare(a.pickupDate),
     );
     expect(latest?.customerName).toBe("Kavárna U Mostu");
+  });
+
+  it("does not rename another customer when the phone changes to theirs", async () => {
+    await save(template({ customerName: "MŠ Sluníčko", phone: "777000102" }));
+    const { standingOrderId } = await save(
+      template({ customerName: "Bistro", phone: "777000103", weekdays: [1] }),
+    );
+    await save(
+      template({
+        customerName: "Školní jídelna",
+        phone: "777000102",
+        weekdays: [1],
+      }),
+      standingOrderId,
+    );
+    const names = (await db.select().from(customer))
+      .map((c) => c.name)
+      .toSorted();
+    expect(names).toEqual(["Bistro", "MŠ Sluníčko"]);
   });
 
   it("does not bring back an ended standing order", async () => {
@@ -220,6 +245,123 @@ describe("saveStandingOrder", () => {
     expect(
       await saveStandingOrder(db, template(), WEDNESDAY_MORNING, randomUUID()),
     ).toEqual({ status: "rejected", reason: "not_found" });
+  });
+});
+
+describe("editing (R7 screen)", () => {
+  it("drops the open days of a removed weekday and keeps a cancelled one", async () => {
+    const { standingOrderId } = await save();
+    const tuesdays = (await days()).filter((d) => d.date === "2026-12-08");
+    const [cancelled] = tuesdays;
+    if (!cancelled) throw new Error("No Tuesday");
+    await setReservationStatus(
+      db,
+      cancelled.id,
+      "cancelled",
+      WEDNESDAY_MORNING,
+    );
+
+    await save(template({ weekdays: [5] }), standingOrderId);
+    const after = await days();
+    expect(
+      after.filter((d) => d.status === "reserved").map((d) => d.date),
+    ).toEqual(["2026-11-27", "2026-12-04", "2026-12-11", "2026-12-18"]);
+    expect(after.find((d) => d.date === "2026-12-08")?.status).toBe(
+      "cancelled",
+    );
+  });
+
+  it("saves an edit that no longer fits the limit and reports the day", async () => {
+    const { standingOrderId } = await save(
+      template({ items: [{ productId: chleb.id, quantity: 5 }] }),
+    );
+    // Someone else takes 12 of the 20 loaves for Tuesday 1 December.
+    await createReservation(
+      db,
+      {
+        customerName: "Jana",
+        phone: "601 234 567",
+        pickupDate: "2026-12-01",
+        items: [{ productId: chleb.id, quantity: 12 }],
+        idempotencyKey: randomUUID(),
+      },
+      { source: "online" },
+      WEDNESDAY_MORNING,
+    );
+
+    const edited = await save(
+      template({ items: [{ productId: chleb.id, quantity: 10 }] }),
+      standingOrderId,
+    );
+    expect(edited.skipped).toEqual([
+      expect.objectContaining({
+        date: "2026-12-01",
+        productName: "Chléb",
+        remaining: 8,
+        standingOrderId,
+      }),
+    ]);
+    // The old day was deleted and could not be recreated.
+    expect((await days()).map((d) => d.date)).not.toContain("2026-12-01");
+    expect(await quantityOn("2026-12-08", chleb.id)).toBe(10);
+  });
+});
+
+describe("listStandingOrders", () => {
+  it("lists active orders first, by name the Czech way, with their items", async () => {
+    const dilna = await save(
+      template({ customerName: "Dílna", phone: "777 000 001" }),
+    );
+    await save(
+      template({
+        customerName: "Čajovna",
+        phone: "777 000 002",
+        items: [{ productId: rohlik.id, quantity: 3 }],
+      }),
+    );
+    await save(template({ customerName: "Cukrárna", phone: "777 000 003" }));
+    await endStandingOrder(db, dilna.standingOrderId, WEDNESDAY_MORNING);
+    await db
+      .update(product)
+      .set({ active: false })
+      .where(eq(product.id, chleb.id));
+
+    const rows = await listStandingOrders(db);
+    expect(rows.map((r) => [r.customerName, r.active])).toEqual([
+      ["Cukrárna", true],
+      ["Čajovna", true],
+      ["Dílna", false],
+    ]);
+    expect(rows[0]).toMatchObject({
+      phone: "+420777000003",
+      weekdays: [2, 5],
+      pickupTime: "07:00",
+      note: null,
+      items: [
+        {
+          productId: chleb.id,
+          productName: "Chléb",
+          quantity: 2,
+          productActive: false,
+        },
+        {
+          productId: rohlik.id,
+          productName: "Rohlík",
+          quantity: 20,
+          productActive: true,
+        },
+      ],
+    });
+    expect(rows[1]?.items).toHaveLength(1);
+    const [ended] = await db
+      .select({ active: standingOrder.active })
+      .from(standingOrder)
+      .where(eq(standingOrder.id, dilna.standingOrderId));
+    expect(ended?.active).toBe(false);
+  });
+
+  it("is empty without standing orders", async () => {
+    expect(await listStandingOrders(db)).toEqual([]);
   });
 });
 
@@ -274,10 +416,15 @@ describe("fillStandingOrderDays", () => {
       WEDNESDAY_MORNING,
     );
     if (jana.status !== "created") throw new Error(jana.status);
-    await save(template({ items: [{ productId: chleb.id, quantity: 10 }] }));
+    const { standingOrderId } = await save(
+      template({ items: [{ productId: chleb.id, quantity: 10 }] }),
+    );
+    // Tagged with its standing order, so the screen shows it on that row.
     expect(
       (await fillStandingOrderDays(db, WEDNESDAY_MORNING)).skipped,
-    ).toHaveLength(1);
+    ).toEqual([
+      expect.objectContaining({ date: "2026-12-01", standingOrderId }),
+    ]);
 
     await setReservationStatus(
       db,
