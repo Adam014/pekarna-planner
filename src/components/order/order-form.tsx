@@ -402,9 +402,9 @@ export function OrderForm({
           {pending ? (
             "Odesílám…"
           ) : (
-            <>
+            <span>
               Odeslat<span className="max-sm:hidden"> objednávku</span>
-            </>
+            </span>
           )}
         </Button>
       </div>
