@@ -62,12 +62,15 @@ export function OrderForm({
   products,
   days,
   idempotencyKey,
+  yourOrders,
 }: {
   intro: string;
   products: FormProduct[];
   days: FormDay[];
   /** Made by the server per render, so a double submit saves once. */
   idempotencyKey: string;
+  /** "Vaše objednávky" (R3), under the intro; not on the success screen. */
+  yourOrders: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(placeOrder, INITIAL);
   const values = state.status === "error" ? state.values : undefined;
@@ -185,6 +188,7 @@ export function OrderForm({
   return (
     <form action={formAction} noValidate className="flex flex-col gap-8">
       <p className="-mt-4 text-muted-foreground">{intro}</p>
+      {yourOrders}
 
       {showSummary && (
         <div
@@ -347,10 +351,11 @@ export function OrderForm({
               aria-describedby="remember-hint"
               className="size-5 shrink-0 cursor-pointer accent-primary"
             />
-            Zapamatovat jméno a telefon v tomto prohlížeči
+            Zapamatovat si mě v tomto prohlížeči
           </label>
           <p id="remember-hint" className="pl-8 text-sm text-muted-foreground">
-            Zůstanou jen v tomto zařízení, nikam se neposílají.
+            Jméno, telefon a odkazy na objednávky (cookie) zůstanou jen v tomto
+            prohlížeči.
           </p>
         </div>
       </section>

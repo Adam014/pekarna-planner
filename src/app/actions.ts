@@ -4,13 +4,22 @@ import { refresh } from "next/cache";
 import { rejectionErrors } from "@/components/order/messages";
 import { db } from "@/lib/db";
 import { formatDay, formatPrice } from "@/lib/format";
+import {
+  readOrderTokens,
+  withToken,
+  writeOrderTokens,
+} from "@/lib/order-cookie";
 import { savedOrder } from "@/lib/services/online-order.service";
-import { createReservation } from "@/lib/services/reservations.service";
+import {
+  cancelByToken,
+  createReservation,
+} from "@/lib/services/reservations.service";
 import {
   parseOrderForm,
   type OrderErrors,
   type OrderFormValues,
 } from "@/lib/validators/order-form";
+import { orderToken } from "@/lib/validators/order-token";
 
 export type OrderSummary = {
   /** "pátek 27. listopadu" */
@@ -54,11 +63,12 @@ export async function placeOrder(
     };
   }
 
+  const now = Temporal.Now.instant();
   const result = await createReservation(
     db,
     parsed.input,
     { source: "online" },
-    Temporal.Now.instant(),
+    now,
   );
   if (result.status === "rejected") {
     // The offer changed under the customer: show what is left now.
@@ -72,6 +82,9 @@ export async function placeOrder(
   if (result.status === "needs_confirmation" || !result.token) {
     throw new Error(`Unexpected online result: ${result.status}`);
   }
+
+  // Also on a replay: it rotated the token, so the new one replaces it.
+  await rememberOrder(result.token, parsed.values.remember);
 
   const order = await savedOrder(db, result.reservationId);
   const total = order.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
@@ -91,4 +104,25 @@ export async function placeOrder(
       ? { name: parsed.input.customerName, phone: parsed.values.phone.trim() }
       : null,
   };
+}
+
+/**
+ * Adds the order's link to this browser's list (R3). No database reads: the
+ * order is already saved, so nothing here may fail it. Dead links fall out
+ * by the cap, and "Vaše objednávky" skips them.
+ */
+async function rememberOrder(token: string, persistent: boolean) {
+  await writeOrderTokens(withToken(await readOrderTokens(), token), persistent);
+}
+
+/**
+ * The customer cancels through their link (R3). Public, like placeOrder: the
+ * token is the permission. Every outcome (cancelled, too late, unknown) is
+ * shown by the re-rendered page, so nothing is returned.
+ */
+export async function cancelOrder(formData: FormData): Promise<void> {
+  const token = orderToken.safeParse(formData.get("token"));
+  if (!token.success) return;
+  await cancelByToken(db, token.data, Temporal.Now.instant());
+  refresh();
 }

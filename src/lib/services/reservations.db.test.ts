@@ -534,11 +534,19 @@ describe("the customer's link", () => {
 
   it("shows the order and cancels it before the cutoff", async () => {
     const token = await placed();
-    expect(await orderByToken(db, token, WEDNESDAY_MORNING)).toMatchObject({
-      customerName: "Jana Nováková",
+    const view = await orderByToken(db, token, WEDNESDAY_MORNING);
+    expect(view).toMatchObject({
+      pickupDate: FRIDAY,
+      status: "reserved",
       cancellable: true,
-      items: [{ productName: "Rohlík", quantity: 2 }],
+      items: [{ productName: "Rohlík", quantity: 2, unitPrice: 450 }],
+      total: 900,
+      // Thursday 18:00 in Prague.
+      deadline: "2026-11-26T17:00:00Z",
     });
+    // The link may be shared: no name or phone in what it shows.
+    expect(view).not.toHaveProperty("customerName");
+    expect(view).not.toHaveProperty("customerPhone");
     expect(await cancelByToken(db, token, WEDNESDAY_MORNING)).toBe("cancelled");
     expect(await cancelByToken(db, token, WEDNESDAY_MORNING)).toBe("cancelled");
     expect(await pieces(db, rohlik.id, FRIDAY)).toBe(0);
@@ -559,6 +567,26 @@ describe("the customer's link", () => {
     if (!row) throw new Error("No reservation");
     await setReservationStatus(db, row.id, "picked_up", FRIDAY_MORNING);
     expect(await cancelByToken(db, token, WEDNESDAY_MORNING)).toBe("too_late");
+  });
+
+  it("does not cancel an order marked as not picked up", async () => {
+    const token = await placed();
+    const [row] = await db.select().from(reservation);
+    if (!row) throw new Error("No reservation");
+    await setReservationStatus(db, row.id, "no_show", FRIDAY_MORNING);
+    expect(await cancelByToken(db, token, WEDNESDAY_MORNING)).toBe("too_late");
+    expect(await orderByToken(db, token, WEDNESDAY_MORNING)).toMatchObject({
+      status: "no_show",
+      cancellable: false,
+    });
+  });
+
+  it("still shows a cancelled order until the link expires", async () => {
+    const token = await placed();
+    await cancelByToken(db, token, WEDNESDAY_MORNING);
+    expect(
+      await orderByToken(db, token, at("2026-12-27T12:00:00Z")),
+    ).toMatchObject({ status: "cancelled", cancellable: false });
   });
 
   it("stops working 30 days after pickup, and for an unknown token", async () => {

@@ -3,7 +3,7 @@
 import {
   CroissantIcon,
   ListChecksIcon,
-  PlusIcon,
+  PackageIcon,
   type LucideIcon,
 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 const ITEMS: {
   href: string;
   label: string;
-  /** On a phone, where three full labels do not fit. */
+  /** On a phone, where the full labels do not fit. */
   short: string;
   icon: LucideIcon;
   roles: readonly Role[];
@@ -28,18 +28,18 @@ const ITEMS: {
     roles: ["staff", "owner"],
   },
   {
-    href: "/nova",
-    label: "Nová rezervace",
-    short: "Nová",
-    icon: PlusIcon,
-    roles: ["staff", "owner"],
-  },
-  {
     href: "/plan",
     label: "Plán pečení",
     short: "Plán",
     icon: CroissantIcon,
     roles: ["staff", "owner"],
+  },
+  {
+    href: "/vyrobky",
+    label: "Výrobky",
+    short: "Výrobky",
+    icon: PackageIcon,
+    roles: ["owner"],
   },
 ];
 
@@ -49,10 +49,13 @@ const ITEMS: {
  */
 export function StaffNav({ role }: { role: Role }) {
   const pathname = usePathname();
+  const items = ITEMS.filter((item) => item.roles.includes(role));
+  // Four items fit a 360 px phone only without icons and with less padding.
+  const compact = items.length > 3;
   return (
     <nav aria-label="Hlavní navigace" className="w-full sm:w-auto">
       <ul className="flex rounded-xl bg-muted p-1">
-        {ITEMS.filter((item) => item.roles.includes(role)).map((item) => {
+        {items.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -62,13 +65,18 @@ export function StaffNav({ role }: { role: Role }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-150 select-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.97]",
+                  "relative flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-150 select-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none active:scale-[0.97]",
+                  compact ? "px-2 sm:px-4" : "px-4",
                   active && "bg-background text-foreground shadow-sm",
                 )}
               >
                 <Icon
                   aria-hidden
-                  className={cn("size-4", active && "text-crust")}
+                  className={cn(
+                    "size-4",
+                    compact && "max-sm:hidden",
+                    active && "text-crust",
+                  )}
                 />
                 <span className="sm:hidden">{item.short}</span>
                 <span className="hidden sm:inline">{item.label}</span>

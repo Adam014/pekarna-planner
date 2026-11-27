@@ -10,7 +10,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { setStatus } from "@/app/(staff)/dnes/actions";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,21 +26,11 @@ import type {
 import { matchesCustomer } from "@/lib/search";
 import type { DayReservation } from "@/lib/services/reservations.service";
 import { cn } from "@/lib/utils";
-import { changedMessage, refusalMessage, STATUS_LABEL } from "./messages";
+import { changedMessage, refusalMessage } from "./messages";
 
 export type DayRow = DayReservation & {
   phoneDisplay: string;
   totalDisplay: string;
-};
-
-const STATUS_VARIANT: Record<
-  ReservationStatus,
-  "info" | "success" | "warning" | "secondary"
-> = {
-  reserved: "info",
-  picked_up: "success",
-  no_show: "warning",
-  cancelled: "secondary",
 };
 
 const SOURCE: Record<ReservationSource, string> = {
@@ -254,11 +244,7 @@ function Row({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate font-medium">{row.customerName}</span>
-          {showStatus && (
-            <Badge variant={STATUS_VARIANT[row.status]}>
-              {STATUS_LABEL[row.status]}
-            </Badge>
-          )}
+          {showStatus && <StatusBadge status={row.status} />}
         </div>
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <a

@@ -21,6 +21,7 @@ import {
   bookableDates,
   datesBetween,
   isBeforeCutoff,
+  orderDeadline,
   today,
   weekdayOf,
 } from "../domain/time";
@@ -390,14 +391,21 @@ export async function dayReservations(
   });
 }
 
+/**
+ * What the link shows (R3). No name or phone: the link may be shared, and
+ * R3 asks only for the day, time, items, total and status.
+ */
 export type OrderView = {
   id: string;
-  customerName: string;
   pickupDate: string;
+  /** "08:30", or null when no time was given. */
   pickupTime: string | null;
   status: ReservationStatus;
-  note: string | null;
   items: { productName: string; quantity: number; unitPrice: number }[];
+  /** In haléře. */
+  total: number;
+  /** The last moment to cancel, as an ISO instant (the order cutoff). */
+  deadline: string;
   /** The customer can still cancel it themselves. */
   cancellable: boolean;
 };
@@ -426,12 +434,12 @@ export async function orderByToken(
   const cutoff = await cutoffTime(db);
   return {
     id: row.id,
-    customerName: row.customerName,
     pickupDate: row.pickupDate,
-    pickupTime: row.pickupTime,
+    pickupTime: row.pickupTime?.slice(0, 5) ?? null,
     status: row.status,
-    note: row.note,
     items,
+    total: items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0),
+    deadline: orderDeadline(row.pickupDate, cutoff).toString(),
     cancellable:
       row.status === "reserved" && isBeforeCutoff(row.pickupDate, now, cutoff),
   };

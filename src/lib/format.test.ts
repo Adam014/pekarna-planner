@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDay,
+  formatDayOn,
   formatDayWithYear,
   formatDeadline,
   formatPrice,
+  formatShortDay,
   formatStamp,
 } from "./format";
 
@@ -14,6 +16,19 @@ describe("formatDay", () => {
   it("names the weekday and the month in Czech", () => {
     expect(formatDay("2026-11-26")).toBe("čtvrtek 26. listopadu");
     expect(formatDay("2027-03-28")).toBe("neděle 28. března");
+  });
+});
+
+describe("formatDayOn", () => {
+  it("puts the weekday in the case after na", () => {
+    expect(formatDayOn("2026-11-28")).toBe("sobotu 28. listopadu");
+    expect(formatDayOn("2026-11-25")).toBe("středu 25. listopadu");
+  });
+});
+
+describe("formatShortDay", () => {
+  it("shortens the weekday and the month", () => {
+    expect(plain(formatShortDay("2026-11-27"))).toBe("pá 27. 11.");
   });
 });
 

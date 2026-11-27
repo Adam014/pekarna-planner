@@ -14,14 +14,20 @@ export const STAFF = {
   password: "e2e-staff-7f3c9a1d5b2e8f40",
 };
 
-/** The signed-in staff session, written by auth.setup.ts (gitignored). */
+export const OWNER = {
+  email: "majitel@pekarna.com",
+  password: "e2e-owner-2b8d6e0c4a9f1735",
+};
+
+/** The signed-in sessions, written by auth.setup.ts (gitignored). */
 export const STAFF_SESSION = "playwright/.auth/staff.json";
+export const OWNER_SESSION = "playwright/.auth/owner.json";
 
 export const E2E_DATABASE_URL = localDatabaseUrl("E2E_DATABASE_URL");
 
 export const E2E_ENV = {
   DATABASE_URL: E2E_DATABASE_URL,
   BETTER_AUTH_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
-  SEED_OWNER_PASSWORD: "e2e-owner-2b8d6e0c4a9f1735",
+  SEED_OWNER_PASSWORD: OWNER.password,
   SEED_STAFF_PASSWORD: STAFF.password,
 };

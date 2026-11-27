@@ -8,22 +8,13 @@ import {
   type FormDay,
   type FormProduct,
 } from "@/components/order/order-form";
+import { YourOrders } from "@/components/order/your-orders";
 import { db } from "@/lib/db";
 import { addDays, today } from "@/lib/domain/time";
-import { formatPrice } from "@/lib/format";
+import { formatDayOn, formatPrice } from "@/lib/format";
 import { orderOffer } from "@/lib/services/online-order.service";
 
 const WEEKDAYS = ["po", "út", "st", "čt", "pá", "so", "ne"];
-/** After "na": "na sobotu 28. listopadu". */
-const ON_WEEKDAY = [
-  "pondělí",
-  "úterý",
-  "středu",
-  "čtvrtek",
-  "pátek",
-  "sobotu",
-  "neděli",
-];
 /** "zbývají 3 ks" only when this few are left, so the list stays quiet. */
 const FEW_LEFT = 5;
 
@@ -34,7 +25,16 @@ export default function OrderPage() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-6 sm:pt-16">
       <header className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-crust">Pekárna Planner</p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-medium text-crust">Pekárna Planner</p>
+          {/* For the bakery's staff; out of the customer's way. */}
+          <Link
+            href="/prihlaseni"
+            className="-mr-3 inline-flex h-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Přihlášení pro pekárnu
+          </Link>
+        </div>
         <h1 className="text-3xl font-semibold tracking-tight">
           Objednávka pečiva
         </h1>
@@ -44,14 +44,6 @@ export default function OrderPage() {
       >
         <OrderSection />
       </Suspense>
-      <footer className="mt-auto">
-        <Link
-          href="/prihlaseni"
-          className="inline-flex h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Přihlášení pro pekárnu
-        </Link>
-      </footer>
     </main>
   );
 }
@@ -63,11 +55,22 @@ async function OrderSection() {
   const { cutoff, products, days } = await orderOffer(db, now);
   const tomorrow = addDays(today(now), 1);
 
+  // The orders this browser remembers (R3); reads its cookie, so it streams
+  // on its own.
+  const yourOrders = (
+    <Suspense fallback={null}>
+      <YourOrders />
+    </Suspense>
+  );
+
   if (days.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed py-12 text-center text-muted-foreground">
-        Teď nejde nic objednat. Zkuste to prosím později.
-      </p>
+      <>
+        {yourOrders}
+        <p className="rounded-xl border border-dashed py-12 text-center text-muted-foreground">
+          Teď nejde nic objednat. Zkuste to prosím později.
+        </p>
+      </>
     );
   }
 
@@ -98,10 +101,7 @@ async function OrderSection() {
         day: "numeric",
         month: "numeric",
       }),
-      title: `${ON_WEEKDAY[plain.dayOfWeek - 1]} ${plain.toLocaleString(
-        "cs-CZ",
-        { day: "numeric", month: "long" },
-      )}`,
+      title: formatDayOn(date),
       items: items.map((i) => ({
         productId: i.productId,
         remaining: i.remaining,
@@ -123,6 +123,7 @@ async function OrderSection() {
       products={formProducts}
       days={formDays}
       idempotencyKey={randomUUID()}
+      yourOrders={yourOrders}
     />
   );
 }

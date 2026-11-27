@@ -11,6 +11,35 @@ export function formatDay(date: string): string {
   });
 }
 
+/** Weekdays after "na": "na sobotu 28. listopadu". */
+const ON_WEEKDAY = [
+  "pondělí",
+  "úterý",
+  "středu",
+  "čtvrtek",
+  "pátek",
+  "sobotu",
+  "neděli",
+];
+
+/** "sobotu 28. listopadu" for a 'YYYY-MM-DD' day, to follow "na". */
+export function formatDayOn(date: string): string {
+  const day = Temporal.PlainDate.from(date);
+  return `${ON_WEEKDAY[day.dayOfWeek - 1]} ${day.toLocaleString("cs-CZ", {
+    day: "numeric",
+    month: "long",
+  })}`;
+}
+
+/** "pá 27. 11." for a 'YYYY-MM-DD' day: a row in a short list. */
+export function formatShortDay(date: string): string {
+  return Temporal.PlainDate.from(date).toLocaleString("cs-CZ", {
+    weekday: "short",
+    day: "numeric",
+    month: "numeric",
+  });
+}
+
 /** "64,50 Kč" from haléře; whole crowns without decimals ("60 Kč"). */
 export function formatPrice(halere: number): string {
   const digits = halere % 100 === 0 ? 0 : 2;

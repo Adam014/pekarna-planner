@@ -1,7 +1,10 @@
+import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { StaffNav } from "@/components/staff/staff-nav";
+import { buttonVariants } from "@/components/ui/button";
 import { UserMenu } from "@/components/staff/user-menu";
 import { requireUser } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 export async function StaffHeader() {
   const user = await requireUser();
@@ -16,7 +19,19 @@ export async function StaffHeader() {
       <div className="order-last w-full sm:order-none sm:w-auto">
         <StaffNav role={user.role} />
       </div>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
+        {/* The main action for a phone call, apart from the screens. */}
+        <Link
+          href="/nova"
+          className={cn(
+            buttonVariants(),
+            "bg-crust text-crust-foreground transition-transform hover:bg-crust/90 active:scale-[0.97]",
+          )}
+        >
+          <PlusIcon aria-hidden />
+          <span className="sm:hidden">Nová</span>
+          <span className="hidden sm:inline">Nová rezervace</span>
+        </Link>
         <UserMenu name={user.name} role={user.role} />
       </div>
     </div>

@@ -1,13 +1,6 @@
 import type { SetStatusResult } from "@/app/(staff)/dnes/actions";
+import { STATUS_LABEL } from "@/components/status-badge";
 import type { ReservationStatus } from "@/lib/domain/reservation";
-
-/** Labels as on the design reference page (`/design`). */
-export const STATUS_LABEL: Record<ReservationStatus, string> = {
-  reserved: "Rezervováno",
-  picked_up: "Vydáno",
-  no_show: "Nevyzvednuto",
-  cancelled: "Zrušeno",
-};
 
 /** The toast after a saved change. */
 export function changedMessage(name: string, to: ReservationStatus): string {

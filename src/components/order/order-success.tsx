@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OrderSummary } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { OrderItems } from "./order-items";
 
 const noSubscribe = () => () => {};
 
 /**
  * Shown in place of the form after a saved order: what was ordered and the
- * order link to keep. The link's page comes with R3; until then the link is
- * only shown and copied.
+ * order link to open or keep (R3).
  */
 export function OrderSuccess({
   orderPath,
@@ -58,31 +59,7 @@ export function OrderSuccess({
         </p>
       </div>
 
-      <ul className="divide-y overflow-hidden rounded-xl border bg-card">
-        {summary.items.map((item) => (
-          <li
-            key={item.name}
-            className="flex items-baseline justify-between gap-4 px-4 py-3"
-          >
-            <span>
-              <span className="font-medium tabular-nums">{item.quantity}×</span>{" "}
-              {item.name}
-            </span>
-            <span className="tabular-nums text-muted-foreground">
-              {item.price}
-            </span>
-          </li>
-        ))}
-        <li className="flex items-baseline justify-between gap-4 bg-muted/50 px-4 py-3 font-semibold">
-          <span>
-            Celkem{" "}
-            <span className="font-normal text-muted-foreground">
-              (platí se v pekárně)
-            </span>
-          </span>
-          <span className="tabular-nums">{summary.total}</span>
-        </li>
-      </ul>
+      <OrderItems items={summary.items} total={summary.total} />
 
       <div className="flex flex-col gap-3">
         <h3 className="font-semibold">Odkaz na objednávku</h3>
@@ -93,17 +70,20 @@ export function OrderSuccess({
           {url}
         </p>
         <p className="text-muted-foreground">
-          Uložte si ho. Přes něj objednávku zkontrolujete a do uzávěrky zrušíte.
+          Přes odkaz objednávku zkontrolujete a do uzávěrky zrušíte. V tomto
+          prohlížeči ji najdete i na hlavní stránce.
         </p>
         {/* A plain GET of "/" loads a new form with a new order key, also
             without JavaScript; a client navigation would keep this state. */}
         <form method="get" action="/" className="flex flex-wrap gap-3">
           <Button
-            type="button"
+            asChild
             size="lg"
-            onClick={copy}
             className="bg-crust text-crust-foreground hover:bg-crust/85"
           >
+            <Link href={orderPath}>Zobrazit objednávku</Link>
+          </Button>
+          <Button type="button" variant="outline" size="lg" onClick={copy}>
             {copied ? "Odkaz zkopírován" : "Kopírovat odkaz"}
           </Button>
           <Button type="submit" variant="outline" size="lg">

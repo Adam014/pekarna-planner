@@ -18,7 +18,18 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The order link is a secret in the URL (ADR 0007): never send it on
+      // as a Referer, and keep it out of search engines. Last entry wins.
+      {
+        source: "/objednavka/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+    ];
   },
   cacheComponents: true,
   partialPrefetching: true,

@@ -29,7 +29,7 @@ test("orders for the nearest day and remembers the contact", async ({
 
   await page.getByLabel("Jméno", { exact: true }).fill(NAME);
   await page.getByLabel("Telefon", { exact: true }).fill("601 234 567");
-  await page.getByLabel(/Zapamatovat jméno a telefon/).check();
+  await page.getByLabel(/Zapamatovat si mě/).check();
   await page.getByRole("button", { name: "Odeslat objednávku" }).click();
 
   await expect(
@@ -61,7 +61,7 @@ test("orders for the nearest day and remembers the contact", async ({
   await expect(page.getByLabel("Telefon", { exact: true })).toHaveValue(
     "601 234 567",
   );
-  await expect(page.getByLabel(/Zapamatovat jméno a telefon/)).toBeChecked();
+  await expect(page.getByLabel(/Zapamatovat si mě/)).toBeChecked();
 
   await page.getByRole("link", { name: "Přihlášení pro pekárnu" }).click();
   await expect(page).toHaveURL(/\/prihlaseni$/);
