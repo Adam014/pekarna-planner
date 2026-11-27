@@ -23,28 +23,36 @@ const FEW_LEFT = 5;
 // the cutoff), so it renders per request inside Suspense, uncached.
 export default function OrderPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-6 sm:pt-16">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-crust">Pekárna Planner</p>
+    <>
+      {/* A slim top bar as on store pages: the brand, the staff login. */}
+      <header className="border-b">
+        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between gap-4 px-4">
+          <Link
+            href="/"
+            className="flex min-h-11 items-center text-lg font-semibold tracking-tight"
+          >
+            Pekárna
+          </Link>
           {/* For the bakery's staff; out of the customer's way. */}
           <Link
             href="/prihlaseni"
-            className="-mr-3 inline-flex h-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="-mr-3 inline-flex h-11 items-center rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Přihlášení pro pekárnu
           </Link>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">
+      </header>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-8 pb-6 sm:pt-12">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Objednávka pečiva
         </h1>
-      </header>
-      <Suspense
-        fallback={<p className="text-muted-foreground">Načítám nabídku…</p>}
-      >
-        <OrderSection />
-      </Suspense>
-    </main>
+        <Suspense
+          fallback={<p className="text-muted-foreground">Načítám nabídku…</p>}
+        >
+          <OrderSection />
+        </Suspense>
+      </main>
+    </>
   );
 }
 
@@ -119,7 +127,7 @@ async function OrderSection() {
 
   return (
     <OrderForm
-      intro={`Objednávejte do ${cutoff.slice(0, 5)} den předem. Platí se při vyzvednutí.`}
+      cutoff={cutoff.slice(0, 5)}
       products={formProducts}
       days={formDays}
       idempotencyKey={randomUUID()}

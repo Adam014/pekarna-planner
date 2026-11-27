@@ -2,6 +2,8 @@
 
 import {
   ChevronLeftIcon,
+  ClockIcon,
+  WalletIcon,
   ChevronRightIcon,
   MinusIcon,
   PlusIcon,
@@ -61,13 +63,14 @@ const FIELD_ORDER: OrderField[] = [
  * with or without JavaScript (docs/research/reports/public-order-form).
  */
 export function OrderForm({
-  intro,
+  cutoff,
   products,
   days,
   idempotencyKey,
   yourOrders,
 }: {
-  intro: string;
+  /** The order cutoff, "18:00". */
+  cutoff: string;
   products: FormProduct[];
   days: FormDay[];
   /** Made by the server per render, so a double submit saves once. */
@@ -188,7 +191,17 @@ export function OrderForm({
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-8">
-      <p className="-mt-4 text-muted-foreground">{intro}</p>
+      {/* The store facts, one quiet line under the title. */}
+      <ul className="-mt-5 flex flex-wrap gap-x-5 gap-y-1 text-muted-foreground">
+        <li className="flex items-center gap-1.5">
+          <ClockIcon aria-hidden className="size-4" />
+          Objednávky do {cutoff} den předem
+        </li>
+        <li className="flex items-center gap-1.5">
+          <WalletIcon aria-hidden className="size-4" />
+          Platí se při vyzvednutí
+        </li>
+      </ul>
       {yourOrders}
 
       {showSummary && (
@@ -232,7 +245,7 @@ export function OrderForm({
         className="flex min-w-0 flex-col gap-3"
         aria-describedby={errors.pickupDate ? "pickupDate-error" : undefined}
       >
-        <legend className="mb-3 text-lg font-semibold">Den vyzvednutí</legend>
+        <legend className="sr-only">Den vyzvednutí</legend>
         <FieldError id="pickupDate-error" messages={errors.pickupDate} />
         <DayStrip days={days} date={selected} onPick={pickDay} />
       </fieldset>
@@ -382,19 +395,28 @@ export function OrderForm({
           type="submit"
           size="lg"
           disabled={pending}
+          // The full name even when a phone shows only "Odeslat".
+          aria-label={pending ? undefined : "Odeslat objednávku"}
           className="h-12 bg-crust px-6 text-base text-crust-foreground hover:bg-crust/85"
         >
-          {pending ? "Odesílám…" : "Odeslat objednávku"}
+          {pending ? (
+            "Odesílám…"
+          ) : (
+            <>
+              Odeslat<span className="max-sm:hidden"> objednávku</span>
+            </>
+          )}
         </Button>
       </div>
     </form>
   );
 }
 
+/** Only a thin day gets a mark; a normal day needs none. */
 const DOT = {
-  plenty: "bg-success",
+  plenty: null,
   few: "bg-warning",
-  none: "bg-muted-foreground/50",
+  none: null,
 } as const;
 
 /** How much a day offers: kinds still orderable, and whether stock is thin. */
@@ -483,12 +505,18 @@ function DayStrip({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p
-          aria-live="polite"
-          className="font-medium text-muted-foreground first-letter:uppercase"
-        >
-          {month}
-        </p>
+        {/* The visible heading; the legend names the group for readers. */}
+        <div>
+          <p aria-hidden className="text-lg font-semibold">
+            Den vyzvednutí
+          </p>
+          <p
+            aria-live="polite"
+            className="text-sm text-muted-foreground first-letter:uppercase"
+          >
+            {month}
+          </p>
+        </div>
         <div className="hidden gap-1 sm:flex">
           <Button
             type="button"
@@ -525,7 +553,7 @@ function DayStrip({
             <label
               key={d.date}
               data-date={d.date}
-              className="relative flex h-24 w-20 shrink-0 cursor-pointer snap-start flex-col items-center justify-center gap-0.5 rounded-xl border bg-card transition-colors not-has-checked:hover:bg-muted has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+              className="relative flex h-24 w-20 shrink-0 cursor-pointer snap-start flex-col items-center justify-center gap-0.5 rounded-xl border bg-card transition-colors not-has-checked:hover:bg-muted group has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
             >
               <input
                 id={`day-${d.date}`}
@@ -537,17 +565,21 @@ function DayStrip({
                 aria-label={d.title}
                 className="sr-only"
               />
-              <span className="text-sm opacity-70">{d.chip}</span>
+              <span className="text-sm text-muted-foreground group-has-checked:text-primary-foreground/75">
+                {d.chip}
+              </span>
               <span className="text-lg leading-tight font-semibold tabular-nums">
                 {d.chipDate}
               </span>
               {/* What the day offers at a glance, like prices on a fare
                 calendar: how many kinds, and a dot for how much is left. */}
-              <span className="mt-0.5 flex items-center gap-1 text-sm opacity-80">
-                <span
-                  aria-hidden
-                  className={cn("size-2 rounded-full", DOT[offer.level])}
-                />
+              <span className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground group-has-checked:text-primary-foreground/75">
+                {DOT[offer.level] && (
+                  <span
+                    aria-hidden
+                    className={cn("size-2 rounded-full", DOT[offer.level])}
+                  />
+                )}
                 {offer.label}
               </span>
             </label>
@@ -582,9 +614,7 @@ function ProductRow({
     <li
       className={cn(
         "flex min-h-18 items-center justify-between gap-4 px-4 py-3 transition-colors",
-        !open && "bg-muted/40",
-        // Chosen: a tinted row with an accent edge, clear at a glance.
-        current > 0 && "bg-crust/10 shadow-[inset_4px_0_0_var(--color-crust)]",
+        !open && "bg-hatched",
       )}
     >
       <div className={cn("min-w-0", !open && "opacity-60")}>
@@ -601,7 +631,7 @@ function ProductRow({
             note
           ) : (
             <>
-              <span className="font-semibold text-crust tabular-nums">
+              <span className="font-semibold text-foreground tabular-nums">
                 {product.priceLabel}
               </span>
               {note && (
@@ -621,29 +651,40 @@ function ProductRow({
         </p>
       </div>
       {!open && (
-        <Badge variant="outline" className="h-8 px-3 text-muted-foreground">
+        <Badge
+          variant="outline"
+          className="h-8 bg-card px-3 text-muted-foreground"
+        >
           {state === "sold_out" ? "Vyprodáno" : "Tento den nepečeme"}
         </Badge>
       )}
-      {open && (
-        // One rounded control, so the three parts read as a single stepper.
-        <div
-          className={cn(
-            "flex shrink-0 items-center rounded-full border bg-background p-0.5 transition-colors",
-            current > 0 && "border-crust/60 bg-crust/15",
-          )}
-        >
+      {open && current === 0 && (
+        // Not chosen yet: one round add button, as delivery apps do.
+        <>
+          <input type="hidden" name={`qty.${product.id}`} value="" />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={`Přidat: ${product.name}`}
+            disabled={remaining < 1}
+            onClick={() => onChange("1")}
+            className="size-11 shrink-0 rounded-full bg-card"
+          >
+            <PlusIcon aria-hidden />
+          </Button>
+        </>
+      )}
+      {open && current > 0 && (
+        // Chosen: the add button grows into a solid stepper with the count.
+        <div className="flex shrink-0 items-center rounded-full bg-primary p-0.5 text-primary-foreground">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             aria-label={`Ubrat: ${product.name}`}
-            disabled={current === 0}
             onClick={() => onChange(current > 1 ? String(current - 1) : "")}
-            className={cn(
-              "rounded-full",
-              current > 0 && "text-crust hover:bg-crust/15 hover:text-crust",
-            )}
+            className={STEP}
           >
             <MinusIcon aria-hidden />
           </Button>
@@ -654,16 +695,12 @@ function ProductRow({
             inputMode="numeric"
             min={0}
             max={remaining}
-            placeholder="0"
             aria-label={`Počet kusů: ${product.name}`}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? "items-error" : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={cn(
-              "h-11 w-10 [appearance:textfield] rounded-none border-0 bg-transparent px-0 text-center text-base tabular-nums md:text-base shadow-none focus-visible:ring-0 dark:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-              current > 0 && "font-semibold",
-            )}
+            className="h-11 w-8 [appearance:textfield] rounded-none border-0 bg-transparent px-0 text-center text-base font-semibold tabular-nums shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <Button
             type="button"
@@ -672,10 +709,7 @@ function ProductRow({
             aria-label={`Přidat: ${product.name}`}
             disabled={current >= remaining}
             onClick={() => onChange(String(current + 1))}
-            className={cn(
-              "rounded-full",
-              current > 0 && "text-crust hover:bg-crust/15 hover:text-crust",
-            )}
+            className={STEP}
           >
             <PlusIcon aria-hidden />
           </Button>
@@ -684,6 +718,10 @@ function ProductRow({
     </li>
   );
 }
+
+/** A stepper button on the solid (chosen) stepper. */
+const STEP =
+  "rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground dark:hover:bg-primary-foreground/15 disabled:opacity-40";
 
 function FieldError({ id, messages }: { id: string; messages?: string[] }) {
   if (!messages?.length) return null;

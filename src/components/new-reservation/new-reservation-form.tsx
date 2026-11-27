@@ -617,7 +617,7 @@ function ReservationForm({
                   key={p.id}
                   className={cn(
                     "flex items-center justify-between gap-3 py-2 pr-2 pl-4",
-                    unavailable && quantity === 0 && "bg-muted/40",
+                    unavailable && quantity === 0 && "bg-hatched",
                   )}
                 >
                   <div
