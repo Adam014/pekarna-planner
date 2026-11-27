@@ -26,6 +26,21 @@ bun run db:seed        # demo accounts (passwords from .env.local) and data
 bun run dev            # http://localhost:3000
 ```
 
+## Order form abuse protection (manual step)
+
+The public order form at `/` has no account, so a bot could fill it. In the
+code it has a honeypot field, Zod caps (at most 50 products, 999 pieces each)
+and the daily limit, and Next.js checks the Origin of server actions. One
+rate limit is set by hand in the Vercel dashboard (Firewall → Rules, available
+on Hobby):
+
+- If the request method is `POST` and the path equals `/`
+- then rate limit: fixed window, 60 s, 10 requests, key IP, action `429`.
+
+Every `POST` to `/` is the order action. _Demo choice:_ a real product would
+also put Vercel BotID (Deep Analysis) on the action and accept orders sent
+with JavaScript only.
+
 ## The problem
 
 > "People call in to reserve bread and pastries. Managing the reservations and

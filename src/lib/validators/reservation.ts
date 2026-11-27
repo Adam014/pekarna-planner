@@ -60,3 +60,9 @@ export const standingOrderId = z.uuid();
 
 /** The day shown on "Dnes" (`?den=YYYY-MM-DD`). */
 export const dayParam = z.iso.date();
+
+/** Staff on the phone (R1); `confirmed` once they saw the not-baked warning. */
+export const phoneReservationInput = reservationInput.extend({
+  confirmed: z.boolean().default(false),
+});
+export type PhoneReservationInput = z.input<typeof phoneReservationInput>;

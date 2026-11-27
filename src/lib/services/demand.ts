@@ -4,7 +4,7 @@
  * both cannot take the last pieces.
  */
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import type { Tx } from "../db/types";
+import type { Db, Tx } from "../db/types";
 import { COUNTED_STATUSES } from "../domain/reservation";
 import { product, reservation, reservationItem } from "../db/schema";
 
@@ -28,9 +28,13 @@ export async function lockProducts(
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-/** Pieces already ordered (reserved or picked up), by day and product. */
+/**
+ * Pieces already ordered (reserved or picked up), by day and product. Inside
+ * a transaction after lockProducts() it is exact; on the plain database it is
+ * a snapshot for showing what is left.
+ */
 export async function orderedPieces(
-  tx: Tx,
+  tx: Db | Tx,
   dates: readonly string[],
   productIds: readonly string[],
 ): Promise<Map<string, number>> {

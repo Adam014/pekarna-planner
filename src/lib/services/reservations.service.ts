@@ -6,7 +6,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/types";
-import { reservation, reservationItem } from "../db/schema";
+import { product, reservation, reservationItem } from "../db/schema";
 import { normalizePhone } from "../domain/phone";
 import {
   BOOKING_HORIZON_DAYS,
@@ -19,6 +19,7 @@ import {
 import {
   addDays,
   bookableDates,
+  datesBetween,
   isBeforeCutoff,
   today,
   weekdayOf,
@@ -26,6 +27,7 @@ import {
 import type { ReservationInput } from "../validators/reservation";
 import { findOrCreateCustomer } from "./customers";
 import {
+  demandKey,
   lockProducts,
   orderedPieces,
   overLimit,
@@ -208,6 +210,64 @@ async function replayOf(
     .set({ accessTokenHash: sha256(token) })
     .where(eq(reservation.id, existing.id));
   return { status: "replayed", reservationId: existing.id, token };
+}
+
+export type PhoneOrderForm = {
+  products: { id: string; name: string; price: number; bakeDays: number[] }[];
+  /** Every day staff can book, today to the booking horizon. */
+  dates: string[];
+  /** Pieces still free, by day and product id (never below 0). */
+  remaining: Record<string, Record<string, number>>;
+};
+
+/**
+ * What the phone form needs (R1): the active products by name and what is
+ * left of each on every bookable day. A snapshot for display; saving checks
+ * the limit again under lock.
+ */
+export async function phoneOrderForm(
+  db: Db,
+  now: Temporal.Instant,
+): Promise<PhoneOrderForm> {
+  const first = today(now);
+  const dates = datesBetween(first, addDays(first, BOOKING_HORIZON_DAYS));
+  const products = await db
+    .select({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      bakeDays: product.bakeDays,
+      dailyLimit: product.dailyLimit,
+    })
+    .from(product)
+    .where(eq(product.active, true))
+    .orderBy(sql`${product.name} collate "cs-CZ-x-icu"`);
+  const ordered = await orderedPieces(
+    db,
+    dates,
+    products.map((p) => p.id),
+  );
+  const remaining = Object.fromEntries(
+    dates.map((date) => [
+      date,
+      Object.fromEntries(
+        products.map((p) => [
+          p.id,
+          Math.max(0, p.dailyLimit - (ordered.get(demandKey(date, p.id)) ?? 0)),
+        ]),
+      ),
+    ]),
+  );
+  return {
+    products: products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      bakeDays: p.bakeDays,
+    })),
+    dates,
+    remaining,
+  };
 }
 
 export type StatusResult =

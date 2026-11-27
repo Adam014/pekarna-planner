@@ -17,8 +17,10 @@ import {
   createReservation,
   dayReservations,
   orderByToken,
+  phoneOrderForm,
   setReservationStatus,
 } from "./reservations.service";
+import { listCustomers } from "./customers";
 
 const { pool, db } = connect();
 afterAll(() => pool.end());
@@ -568,5 +570,69 @@ describe("the customer's link", () => {
       await orderByToken(db, token, at("2026-12-28T12:00:00Z")),
     ).toBeNull();
     expect(await orderByToken(db, "nonsense", WEDNESDAY_MORNING)).toBeNull();
+  });
+});
+
+describe("phoneOrderForm", () => {
+  it("counts reserved and picked-up pieces per day, not cancelled or no-show", async () => {
+    for (const status of [
+      "reserved",
+      "picked_up",
+      "cancelled",
+      "no_show",
+    ] as const) {
+      const result = await createReservation(
+        db,
+        order({ items: [{ productId: rohlik.id, quantity: 1 }] }),
+        phone(),
+        WEDNESDAY_MORNING,
+      );
+      if (result.status !== "created") throw new Error(result.status);
+      await db
+        .update(reservation)
+        .set({ status })
+        .where(eq(reservation.id, result.reservationId));
+    }
+
+    const form = await phoneOrderForm(db, WEDNESDAY_MORNING);
+    expect(form.remaining[FRIDAY]?.[rohlik.id]).toBe(3);
+    expect(form.remaining["2026-11-26"]?.[rohlik.id]).toBe(5);
+  });
+
+  it("covers today to 21 days ahead and lists only active products by name", async () => {
+    await addProduct(db, { name: "Čokoládový dort", bakeDays: [6] });
+    await addProduct(db, { name: "Bábovka", active: false });
+
+    const form = await phoneOrderForm(db, WEDNESDAY_MORNING);
+    expect(form.dates[0]).toBe("2026-11-25");
+    expect(form.dates.at(-1)).toBe("2026-12-16");
+    expect(form.dates).toHaveLength(22);
+    expect(form.products.map((p) => p.name)).toEqual([
+      "Čokoládový dort",
+      "Rohlík",
+    ]);
+    expect(form.products[0]).toEqual({
+      id: expect.any(String),
+      name: "Čokoládový dort",
+      price: 500,
+      bakeDays: [6],
+    });
+  });
+});
+
+describe("listCustomers", () => {
+  it("lists every customer by name the Czech way", async () => {
+    await db.insert(customer).values([
+      { name: "Zeman", phone: "+420601000001" },
+      { name: "Čermák", phone: "+420601000002" },
+      { name: "Chalupa", phone: "+420601000003" },
+      { name: "Hana", phone: "+420601000004" },
+    ]);
+    expect(await listCustomers(db)).toEqual([
+      { name: "Čermák", phone: "+420601000002" },
+      { name: "Hana", phone: "+420601000004" },
+      { name: "Chalupa", phone: "+420601000003" },
+      { name: "Zeman", phone: "+420601000001" },
+    ]);
   });
 });

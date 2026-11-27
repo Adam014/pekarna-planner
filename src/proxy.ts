@@ -17,6 +17,7 @@ export const config = {
   matcher: [
     // Add each staff URL here when its page is built.
     "/dnes/:path*",
+    "/nova/:path*",
     "/plan/:path*",
   ],
 };

@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import type { Tx } from "../db/types";
+import { eq, sql } from "drizzle-orm";
+import type { Db, Tx } from "../db/types";
 import { customer } from "../db/schema";
 
 /**
@@ -23,4 +23,18 @@ export async function findOrCreateCustomer(
     .where(eq(customer.phone, phone));
   if (!existing) throw new Error(`Customer ${phone} vanished`);
   return existing;
+}
+
+/**
+ * Every customer for the phone form's search, by name the Czech way. The form
+ * filters them in the browser: a small bakery has hundreds at most. A product
+ * with thousands of customers would search on the server instead.
+ */
+export async function listCustomers(
+  db: Db,
+): Promise<{ name: string; phone: string }[]> {
+  return db
+    .select({ name: customer.name, phone: customer.phone })
+    .from(customer)
+    .orderBy(sql`${customer.name} collate "cs-CZ-x-icu"`, customer.phone);
 }
