@@ -15,6 +15,7 @@ import {
   type NewReservationState,
 } from "@/app/(staff)/nova/actions";
 import { Badge } from "@/components/ui/badge";
+import { RollingNumber } from "@/components/rolling-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -710,10 +711,12 @@ function ReservationForm({
         )}
         <div className="flex items-center justify-between gap-4">
           <p className="tabular-nums">
-            <span className="font-semibold">{pieces} ks</span>
+            <span className="font-semibold">
+              <RollingNumber text={`${pieces} ks`} />
+            </span>
             <span className="text-muted-foreground">
               {" · "}
-              {formatPrice(total)}
+              <RollingNumber text={formatPrice(total)} />
             </span>
           </p>
           {/* While the confirmation is open, its button is the one action. */}

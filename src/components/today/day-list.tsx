@@ -10,6 +10,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { setStatus } from "@/app/(staff)/dnes/actions";
+import { RollingNumber } from "@/components/rolling-number";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -219,7 +220,9 @@ function ViewButton({
       )}
     >
       {label}
-      <span className="tabular-nums text-muted-foreground">{count}</span>
+      <span className="tabular-nums text-muted-foreground">
+        <RollingNumber text={String(count)} />
+      </span>
     </button>
   );
 }

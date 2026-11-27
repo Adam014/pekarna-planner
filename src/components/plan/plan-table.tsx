@@ -1,4 +1,5 @@
 import { planTotals, type PlanRow } from "@/lib/domain/bake-plan";
+import { RollingNumber } from "@/components/rolling-number";
 import { cn } from "@/lib/utils";
 
 const number = "px-3 py-3 text-right tabular-nums";
@@ -112,13 +113,13 @@ export function PlanTable({
                 </span>
               </th>
               <td className={cn(number, breakdown, "text-muted-foreground")}>
-                {row.orders}
+                <RollingNumber text={String(row.orders)} />
               </td>
               <td className={cn(number, breakdown, "text-muted-foreground")}>
-                {row.standing}
+                <RollingNumber text={String(row.standing)} />
               </td>
               <td className={cn(number, breakdown, "text-muted-foreground")}>
-                {row.buffer}
+                <RollingNumber text={String(row.buffer)} />
               </td>
               <td
                 className={cn(
@@ -126,7 +127,7 @@ export function PlanTable({
                   "text-2xl font-semibold print:px-0 print:text-[20pt] print:leading-none",
                 )}
               >
-                {row.toBake}
+                <RollingNumber text={String(row.toBake)} />
               </td>
             </tr>
           ))}
@@ -139,16 +140,22 @@ export function PlanTable({
             >
               Celkem
             </th>
-            <td className={cn(number, breakdown)}>{totals.orders}</td>
-            <td className={cn(number, breakdown)}>{totals.standing}</td>
-            <td className={cn(number, breakdown)}>{totals.buffer}</td>
+            <td className={cn(number, breakdown)}>
+              <RollingNumber text={String(totals.orders)} />
+            </td>
+            <td className={cn(number, breakdown)}>
+              <RollingNumber text={String(totals.standing)} />
+            </td>
+            <td className={cn(number, breakdown)}>
+              <RollingNumber text={String(totals.buffer)} />
+            </td>
             <td
               className={cn(
                 number,
                 "text-2xl print:px-0 print:text-[20pt] print:leading-none",
               )}
             >
-              {totals.toBake}
+              <RollingNumber text={String(totals.toBake)} />
             </td>
           </tr>
         </tbody>

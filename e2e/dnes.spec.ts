@@ -156,7 +156,9 @@ test("the bake plan counts today's order and prints", async ({ page }) => {
       has: page.getByRole("rowheader", { name: "Rohlík", exact: true }),
     })
     .getByRole("cell")
-    .last();
+    .last()
+    // The number rolls (RollingNumber); its plain text is the sr-only copy.
+    .locator(".sr-only");
   const todayPlan = `/plan?den=${today(Temporal.Now.instant())}`;
   await page.goto(todayPlan);
   const before = Number(await toBake.textContent());

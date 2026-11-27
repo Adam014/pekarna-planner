@@ -1,8 +1,14 @@
 "use client";
 
-import { ChevronRightIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MinusIcon,
+  PlusIcon,
+} from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { placeOrder, type OrderFormState } from "@/app/actions";
+import { RollingNumber } from "@/components/rolling-number";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,9 +43,6 @@ export type FormDay = {
     note: string | null;
   }[];
 };
-
-/** Chips shown at once; later days are behind "Pozdější dny". */
-const VISIBLE_DAYS = 7;
 
 const INITIAL: OrderFormState = { status: "idle" };
 
@@ -182,8 +185,6 @@ export function OrderForm({
   };
   const message = state.status === "error" ? state.message : undefined;
   const showSummary = summary.length > 0 || !!message;
-  const visible = days.slice(0, VISIBLE_DAYS);
-  const later = days.slice(VISIBLE_DAYS);
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-8">
@@ -226,29 +227,14 @@ export function OrderForm({
       )}
 
       <fieldset
-        className="flex flex-col gap-3"
+        // min-w-0: a fieldset is min-content wide by default, so the day
+        // strip would widen the page instead of scrolling.
+        className="flex min-w-0 flex-col gap-3"
         aria-describedby={errors.pickupDate ? "pickupDate-error" : undefined}
       >
         <legend className="mb-3 text-lg font-semibold">Den vyzvednutí</legend>
         <FieldError id="pickupDate-error" messages={errors.pickupDate} />
-        <DayChips days={visible} date={selected} onPick={pickDay} />
-        {later.length > 0 && (
-          <details
-            className="group"
-            open={later.some((d) => d.date === selected) || undefined}
-          >
-            <summary className="inline-flex min-h-11 list-none items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-              <ChevronRightIcon
-                aria-hidden
-                className="size-4 transition-transform group-open:rotate-90"
-              />
-              Pozdější dny
-            </summary>
-            <div className="pt-2">
-              <DayChips days={later} date={selected} onPick={pickDay} />
-            </div>
-          </details>
-        )}
+        <DayStrip days={days} date={selected} onPick={pickDay} />
       </fieldset>
 
       <section className="flex flex-col gap-3" aria-labelledby="products">
@@ -374,23 +360,29 @@ export function OrderForm({
       </div>
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-between gap-4 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:mx-0 sm:rounded-t-xl sm:border-x">
-        <p aria-live="polite" className="text-sm tabular-nums">
+      {/* A floating summary, apart from the list it sums up. */}
+      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-4 rounded-2xl border bg-card/95 py-2.5 pr-2.5 pl-5 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <p aria-live="polite" className="flex flex-col tabular-nums">
           {pieces > 0 ? (
             <>
-              <span className="font-medium">{pieces} ks</span>
-              <span className="text-muted-foreground"> · </span>
-              <span className="font-medium">{formatPrice(total)}</span>
+              <span className="text-xl font-semibold tracking-tight sm:text-2xl">
+                <RollingNumber text={formatPrice(total)} />
+              </span>
+              <span className="text-sm text-muted-foreground sm:text-base">
+                <RollingNumber text={`${pieces} ks`} />
+              </span>
             </>
           ) : (
-            <span className="text-muted-foreground">Zatím nic</span>
+            <span className="text-base text-muted-foreground sm:text-lg">
+              Vyberte pečivo
+            </span>
           )}
         </p>
         <Button
           type="submit"
           size="lg"
           disabled={pending}
-          className="bg-crust text-crust-foreground hover:bg-crust/85"
+          className="h-12 bg-crust px-6 text-base text-crust-foreground hover:bg-crust/85"
         >
           {pending ? "Odesílám…" : "Odeslat objednávku"}
         </Button>
@@ -399,7 +391,44 @@ export function OrderForm({
   );
 }
 
-function DayChips({
+const DOT = {
+  plenty: "bg-success",
+  few: "bg-warning",
+  none: "bg-muted-foreground/50",
+} as const;
+
+/** How much a day offers: kinds still orderable, and whether stock is thin. */
+function availability(day: FormDay): {
+  level: keyof typeof DOT;
+  label: string;
+} {
+  const open = day.items.filter((i) => i.state === "open");
+  if (open.length === 0) return { level: "none", label: "Nic" };
+  // A note on an open item means only a few pieces are left.
+  const thin =
+    open.filter((i) => i.note).length +
+    day.items.filter((i) => i.state === "sold_out").length;
+  return {
+    level: thin * 2 >= open.length ? "few" : "plenty",
+    label: `${open.length} ${open.length === 1 ? "druh" : open.length < 5 ? "druhy" : "druhů"}`,
+  };
+}
+
+/** "prosinec 2026" for a day's month. */
+function monthLabel(date: string): string {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString("cs-CZ", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Every bookable day in one row, as booking sites do: swipe on a phone,
+ * arrows on a laptop. The month above follows the scroll. The days are
+ * native radios, so the form posts the day without script.
+ */
+function DayStrip({
   days,
   date,
   onPick,
@@ -408,28 +437,123 @@ function DayChips({
   date: string;
   onPick: (day: FormDay) => void;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  const [month, setMonth] = useState(() =>
+    monthLabel(date || (days[0]?.date ?? "")),
+  );
+  const [edges, setEdges] = useState({ start: true, end: false });
+
+  /** The month of the first day in view, and whether the row can scroll. */
+  function sync() {
+    const el = strip.current;
+    if (!el) return;
+    const items = [...el.querySelectorAll<HTMLElement>("[data-date]")];
+    const first = items.find(
+      (item) => item.offsetLeft + item.offsetWidth / 2 >= el.scrollLeft,
+    );
+    if (first?.dataset.date) setMonth(monthLabel(first.dataset.date));
+    setEdges({
+      start: el.scrollLeft <= 1,
+      end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 1,
+    });
+  }
+
+  // Start with the chosen day in view, without moving the page.
+  useEffect(() => {
+    const el = strip.current;
+    const chosen = el?.querySelector<HTMLElement>(`[data-date="${date}"]`);
+    if (
+      el &&
+      chosen &&
+      chosen.offsetLeft > el.clientWidth - chosen.offsetWidth
+    ) {
+      el.scrollLeft = chosen.offsetLeft - el.clientWidth / 3;
+    }
+    sync();
+    // Only on mount: later the customer scrolls on their own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function page(direction: 1 | -1) {
+    const el = strip.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: "smooth" });
+  }
+
   return (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-      {days.map((d) => (
-        <label
-          key={d.date}
-          className="flex min-h-14 cursor-pointer flex-col items-center justify-center rounded-lg border bg-card px-1 py-2 text-sm transition-colors not-has-checked:hover:bg-muted has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <p
+          aria-live="polite"
+          className="font-medium text-muted-foreground first-letter:uppercase"
         >
-          <input
-            id={`day-${d.date}`}
-            type="radio"
-            name="pickupDate"
-            value={d.date}
-            checked={d.date === date}
-            onChange={() => onPick(d)}
-            className="peer sr-only"
-          />
-          <span className="font-medium">{d.chip}</span>
-          <span className="tabular-nums text-muted-foreground peer-checked:text-primary-foreground/75">
-            {d.chipDate}
-          </span>
-        </label>
-      ))}
+          {month}
+        </p>
+        <div className="hidden gap-1 sm:flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Předchozí dny"
+            disabled={edges.start}
+            onClick={() => page(-1)}
+            className="rounded-full"
+          >
+            <ChevronLeftIcon aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Další dny"
+            disabled={edges.end}
+            onClick={() => page(1)}
+            className="rounded-full"
+          >
+            <ChevronRightIcon aria-hidden />
+          </Button>
+        </div>
+      </div>
+      <div
+        ref={strip}
+        onScroll={sync}
+        className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:scroll-px-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+      >
+        {days.map((d) => {
+          const offer = availability(d);
+          return (
+            <label
+              key={d.date}
+              data-date={d.date}
+              className="relative flex h-24 w-20 shrink-0 cursor-pointer snap-start flex-col items-center justify-center gap-0.5 rounded-xl border bg-card transition-colors not-has-checked:hover:bg-muted has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+            >
+              <input
+                id={`day-${d.date}`}
+                type="radio"
+                name="pickupDate"
+                value={d.date}
+                checked={d.date === date}
+                onChange={() => onPick(d)}
+                aria-label={d.title}
+                className="sr-only"
+              />
+              <span className="text-sm opacity-70">{d.chip}</span>
+              <span className="text-lg leading-tight font-semibold tabular-nums">
+                {d.chipDate}
+              </span>
+              {/* What the day offers at a glance, like prices on a fare
+                calendar: how many kinds, and a dot for how much is left. */}
+              <span className="mt-0.5 flex items-center gap-1 text-sm opacity-80">
+                <span
+                  aria-hidden
+                  className={cn("size-2 rounded-full", DOT[offer.level])}
+                />
+                {offer.label}
+              </span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -457,18 +581,29 @@ function ProductRow({
   return (
     <li
       className={cn(
-        "flex min-h-18 items-center justify-between gap-4 px-4 py-3",
+        "flex min-h-18 items-center justify-between gap-4 px-4 py-3 transition-colors",
         !open && "bg-muted/40",
+        // Chosen: a tinted row with an accent edge, clear at a glance.
+        current > 0 && "bg-crust/10 shadow-[inset_4px_0_0_var(--color-crust)]",
       )}
     >
       <div className={cn("min-w-0", !open && "opacity-60")}>
-        <p className="font-medium">{product.name}</p>
-        <p className="text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "font-medium sm:text-lg",
+            current > 0 && "font-semibold",
+          )}
+        >
+          {product.name}
+        </p>
+        <p className="text-sm text-muted-foreground sm:text-base">
           {state === "not_baked" ? (
             note
           ) : (
             <>
-              <span className="tabular-nums">{product.priceLabel}</span>
+              <span className="font-semibold text-crust tabular-nums">
+                {product.priceLabel}
+              </span>
               {note && (
                 <>
                   <span aria-hidden> · </span>
@@ -491,17 +626,26 @@ function ProductRow({
         </Badge>
       )}
       {open && (
-        <div className="flex shrink-0 items-center gap-1">
+        // One rounded control, so the three parts read as a single stepper.
+        <div
+          className={cn(
+            "flex shrink-0 items-center rounded-full border bg-background p-0.5 transition-colors",
+            current > 0 && "border-crust/60 bg-crust/15",
+          )}
+        >
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             aria-label={`Ubrat: ${product.name}`}
             disabled={current === 0}
             onClick={() => onChange(current > 1 ? String(current - 1) : "")}
-            className="text-lg"
+            className={cn(
+              "rounded-full",
+              current > 0 && "text-crust hover:bg-crust/15 hover:text-crust",
+            )}
           >
-            −
+            <MinusIcon aria-hidden />
           </Button>
           <Input
             id={`qty-${product.id}`}
@@ -516,18 +660,24 @@ function ProductRow({
             aria-describedby={invalid ? "items-error" : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-14 [appearance:textfield] text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className={cn(
+              "h-11 w-10 [appearance:textfield] rounded-none border-0 bg-transparent px-0 text-center text-base tabular-nums md:text-base shadow-none focus-visible:ring-0 dark:bg-transparent [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+              current > 0 && "font-semibold",
+            )}
           />
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             aria-label={`Přidat: ${product.name}`}
             disabled={current >= remaining}
             onClick={() => onChange(String(current + 1))}
-            className="text-lg"
+            className={cn(
+              "rounded-full",
+              current > 0 && "text-crust hover:bg-crust/15 hover:text-crust",
+            )}
           >
-            +
+            <PlusIcon aria-hidden />
           </Button>
         </div>
       )}
