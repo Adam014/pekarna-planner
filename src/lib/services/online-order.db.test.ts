@@ -103,7 +103,9 @@ describe("savedOrder", () => {
       .where(eq(product.id, rohlik.id));
     expect(await savedOrder(db, id)).toEqual({
       pickupDate: FRIDAY,
-      items: [{ productName: "Rohlík", quantity: 2, unitPrice: 450 }],
+      items: [
+        { productName: "Rohlík", quantity: 2, unitPrice: 450, imageUrl: null },
+      ],
     });
   });
 });
