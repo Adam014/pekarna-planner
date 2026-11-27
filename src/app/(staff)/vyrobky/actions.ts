@@ -5,14 +5,21 @@ import {
   CUTOFF_MESSAGE,
   issueMessages,
   NAME_TAKEN,
+  NOT_FOUND,
   type ProductField,
 } from "@/components/products/messages";
 import { db } from "@/lib/db";
 import { addDays, isBeforeCutoff, today } from "@/lib/domain/time";
-import { saveProduct as save } from "@/lib/services/products.service";
+import { deletePhoto, storePhoto } from "@/lib/product-photo";
+import {
+  saveProduct as save,
+  setProductImage,
+} from "@/lib/services/products.service";
 import { setCutoffTime } from "@/lib/services/settings";
 import { requireUser } from "@/lib/session";
 import { cutoffInput, productInput } from "@/lib/validators/product";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ProductFormState =
   | { status: "idle" }
@@ -65,4 +72,53 @@ export async function saveCutoff(
     time,
     tomorrowClosed: !isBeforeCutoff(addDays(today(now), 1), now, time),
   };
+}
+
+export type PhotoState =
+  | { status: "idle" }
+  | { status: "saved"; imageUrl: string | null }
+  | { status: "error"; message: string };
+
+const PHOTO_MESSAGES = {
+  not_configured: "Nahrávání fotek tu není nastavené.",
+  invalid_file: "Tuhle fotku se nepodařilo načíst. Zkuste JPG nebo PNG.",
+  not_found: NOT_FOUND,
+} as const;
+
+/** The owner sets a product's photo (FormData: productId, photo). */
+export async function uploadProductPhoto(
+  _prev: PhotoState,
+  data: FormData,
+): Promise<PhotoState> {
+  await requireUser("owner");
+  const id = data.get("productId");
+  const file = data.get("photo");
+  if (typeof id !== "string" || !UUID.test(id) || !(file instanceof File)) {
+    return { status: "error", message: PHOTO_MESSAGES.invalid_file };
+  }
+  const stored = await storePhoto(id, file);
+  if ("error" in stored) {
+    return { status: "error", message: PHOTO_MESSAGES[stored.error] };
+  }
+  const result = await setProductImage(db, id, stored.url);
+  if (!result) {
+    await deletePhoto(stored.url);
+    return { status: "error", message: PHOTO_MESSAGES.not_found };
+  }
+  await deletePhoto(result.previous);
+  refresh();
+  return { status: "saved", imageUrl: stored.url };
+}
+
+/** The owner removes a product's photo. */
+export async function removeProductPhoto(id: string): Promise<PhotoState> {
+  await requireUser("owner");
+  if (!UUID.test(id)) {
+    return { status: "error", message: PHOTO_MESSAGES.not_found };
+  }
+  const result = await setProductImage(db, id, null);
+  if (!result) return { status: "error", message: PHOTO_MESSAGES.not_found };
+  await deletePhoto(result.previous);
+  refresh();
+  return { status: "saved", imageUrl: null };
 }

@@ -1,5 +1,6 @@
 import { io } from "next/cache";
 import Link from "next/link";
+import { cache } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { db } from "@/lib/db";
 import { today } from "@/lib/domain/time";
@@ -8,24 +9,32 @@ import { readOrderTokens } from "@/lib/order-cookie";
 import { orderByToken } from "@/lib/services/reservations.service";
 
 /**
- * "Vaše objednávky" on the order page (R3): the orders this browser
- * remembers in its cookie, from today on. Renders nothing when there are
- * none. At most five lookups of one row each.
+ * The orders this browser remembers, from today on, by pickup day. Cached
+ * per request: the list and the day strip both read it.
  */
-export async function YourOrders() {
+export const rememberedOrders = cache(async () => {
   const tokens = await readOrderTokens();
-  if (tokens.length === 0) return null;
+  if (tokens.length === 0) return [];
   // The time and the orders are per request, also in a runtime prefetch.
   await io();
   const now = Temporal.Now.instant();
   const from = today(now);
   const views = await Promise.all(tokens.map((t) => orderByToken(db, t, now)));
-  const orders = tokens
+  return tokens
     .flatMap((token, i) => {
       const view = views[i];
       return view && view.pickupDate >= from ? [{ token, ...view }] : [];
     })
     .toSorted((a, b) => a.pickupDate.localeCompare(b.pickupDate));
+});
+
+/**
+ * "Vaše objednávky" on the order page (R3): the orders this browser
+ * remembers in its cookie, from today on. Renders nothing when there are
+ * none. At most five lookups of one row each.
+ */
+export async function YourOrders() {
+  const orders = await rememberedOrders();
   if (orders.length === 0) return null;
 
   return (

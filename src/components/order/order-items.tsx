@@ -1,4 +1,5 @@
 import type { OrderSummary } from "@/app/actions";
+import { ProductThumb } from "@/components/products/product-thumb";
 
 /** What was ordered and the total; on the success screen and the order page. */
 export function OrderItems({
@@ -10,11 +11,14 @@ export function OrderItems({
       {items.map((item) => (
         <li
           key={item.name}
-          className="flex items-baseline justify-between gap-4 px-4 py-3"
+          className="flex items-center justify-between gap-4 px-4 py-3"
         >
-          <span>
-            <span className="font-medium tabular-nums">{item.quantity}×</span>{" "}
-            {item.name}
+          <span className="flex min-w-0 items-center gap-3">
+            <ProductThumb src={item.imageUrl} className="size-12 sm:size-12" />
+            <span>
+              <span className="font-medium tabular-nums">{item.quantity}×</span>{" "}
+              {item.name}
+            </span>
           </span>
           <span className="tabular-nums text-muted-foreground">
             {item.price}

@@ -7,6 +7,7 @@ import type { ProductRow } from "@/lib/services/products.service";
 import { cn } from "@/lib/utils";
 import { formatBakeDays } from "./messages";
 import { ProductDialog } from "./product-dialog";
+import { ProductThumb } from "./product-thumb";
 
 /** The button that opens an empty product form. */
 export function AddProductButton() {
@@ -45,7 +46,8 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                 type="button"
                 className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
               >
-                <span className="flex min-w-0 flex-col gap-1">
+                <ProductThumb src={p.imageUrl} />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span
                       className={cn(

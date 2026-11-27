@@ -31,6 +31,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Product photos live in a public Vercel Blob store.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+    ],
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

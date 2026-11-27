@@ -34,6 +34,7 @@ import {
   type ProductInput,
 } from "@/lib/validators/product";
 import { issueMessages, NOT_FOUND, type ProductField } from "./messages";
+import { ProductPhotoField } from "./product-photo-field";
 
 const errorId = (field: string) => `product-${field}-error`;
 
@@ -61,6 +62,18 @@ export function ProductDialog({
             Změny platí pro nové objednávky. Přijaté objednávky zůstanou.
           </DialogDescription>
         </DialogHeader>
+        {/* Saved on its own: a photo needs the product to exist first. */}
+        {product ? (
+          <ProductPhotoField
+            productId={product.id}
+            name={product.name}
+            imageUrl={product.imageUrl}
+          />
+        ) : (
+          <p className="-mt-2 text-sm text-muted-foreground">
+            Fotku přidáte po uložení výrobku.
+          </p>
+        )}
         <ProductForm product={product} onSaved={() => setOpen(false)} />
       </DialogContent>
     </Dialog>

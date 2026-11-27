@@ -20,6 +20,7 @@ export type OrderOffer = {
     /** In haléře. */
     price: number;
     bakeDays: number[];
+    imageUrl: string | null;
   }[];
   /** Days a customer can still order for, each with something baked. */
   days: OfferDay[];
@@ -42,6 +43,7 @@ export async function orderOffer(
         price: product.price,
         dailyLimit: product.dailyLimit,
         bakeDays: product.bakeDays,
+        imageUrl: product.imageUrl,
       })
       .from(product)
       .where(eq(product.active, true))
@@ -55,11 +57,12 @@ export async function orderOffer(
   );
   return {
     cutoff,
-    products: products.map(({ id, name, price, bakeDays }) => ({
+    products: products.map(({ id, name, price, bakeDays, imageUrl }) => ({
       id,
       name,
       price,
       bakeDays,
+      imageUrl,
     })),
     days: offer(
       dates,
@@ -71,7 +74,13 @@ export async function orderOffer(
 
 export type SavedOrder = {
   pickupDate: string;
-  items: { productName: string; quantity: number; unitPrice: number }[];
+  items: {
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    /** The product's current photo; names and prices are the order's copy. */
+    imageUrl: string | null;
+  }[];
 };
 
 /** The saved order with its copied names and prices, for the confirmation. */
@@ -89,8 +98,10 @@ export async function savedOrder(
       productName: reservationItem.productName,
       quantity: reservationItem.quantity,
       unitPrice: reservationItem.unitPrice,
+      imageUrl: product.imageUrl,
     })
     .from(reservationItem)
+    .innerJoin(product, eq(product.id, reservationItem.productId))
     .where(eq(reservationItem.reservationId, reservationId))
     .orderBy(
       sql`${reservationItem.productName} collate "cs-CZ-x-icu"`,

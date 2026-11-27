@@ -8,7 +8,7 @@ import {
   type FormDay,
   type FormProduct,
 } from "@/components/order/order-form";
-import { YourOrders } from "@/components/order/your-orders";
+import { rememberedOrders, YourOrders } from "@/components/order/your-orders";
 import { db } from "@/lib/db";
 import { addDays, today } from "@/lib/domain/time";
 import { formatDayOn, formatPrice } from "@/lib/format";
@@ -60,7 +60,14 @@ async function OrderSection() {
   // The time and the order key are per request (Cache Components).
   await io();
   const now = Temporal.Now.instant();
-  const { cutoff, products, days } = await orderOffer(db, now);
+  const [{ cutoff, products, days }, mine] = await Promise.all([
+    orderOffer(db, now),
+    rememberedOrders(),
+  ]);
+  // Days this browser already has a live order for, marked in the strip.
+  const orderedDays = new Set(
+    mine.filter((o) => o.status !== "cancelled").map((o) => o.pickupDate),
+  );
   const tomorrow = addDays(today(now), 1);
 
   // The orders this browser remembers (R3); reads its cookie, so it streams
@@ -87,6 +94,7 @@ async function OrderSection() {
     name: p.name,
     price: p.price,
     priceLabel: formatPrice(p.price),
+    imageUrl: p.imageUrl,
   }));
   const bakedOn = new Map(
     products.map((p) => [
@@ -110,6 +118,7 @@ async function OrderSection() {
         month: "numeric",
       }),
       title: formatDayOn(date),
+      ordered: orderedDays.has(date),
       items: items.map((i) => ({
         productId: i.productId,
         remaining: i.remaining,

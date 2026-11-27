@@ -26,6 +26,19 @@ bun run db:seed        # demo accounts (passwords from .env.local) and data
 bun run dev            # http://localhost:3000
 ```
 
+## Environments
+
+- **Development:** `.env.local` points at the local Postgres only. The
+  production database URL is never on a laptop; it lives only in the Vercel
+  project settings.
+- **Production:** a production deploy migrates the database itself before
+  building (`vercel-build` runs `drizzle-kit migrate` when
+  `VERCEL_ENV=production`, on the direct Neon URL). Preview deploys never
+  migrate. Migrations are generated locally (`bun run db:generate`), tried on
+  the local database (`bun run db:migrate`) and reach production only by
+  deploying.
+- **Tests:** their own local databases (`.env.test`).
+
 ## Order form abuse protection (manual step)
 
 The public order form at `/` has no account, so a bot could fill it. In the

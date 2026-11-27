@@ -78,6 +78,7 @@ async function OrderDetails({ code }: { code: string }) {
             name: i.productName,
             quantity: i.quantity,
             price: formatPrice(i.quantity * i.unitPrice),
+            imageUrl: i.imageUrl,
           }))}
           total={formatPrice(order.total)}
         />

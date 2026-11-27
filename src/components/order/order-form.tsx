@@ -5,6 +5,7 @@ import {
   ClockIcon,
   WalletIcon,
   ChevronRightIcon,
+  CircleCheckIcon,
   MinusIcon,
   PlusIcon,
 } from "lucide-react";
@@ -12,6 +13,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { placeOrder, type OrderFormState } from "@/app/actions";
 import { RollingNumber } from "@/components/rolling-number";
 import { Badge } from "@/components/ui/badge";
+import { ProductThumb } from "@/components/products/product-thumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,7 @@ export type FormProduct = {
   /** In haléře; the total here is for display, the server prices the order. */
   price: number;
   priceLabel: string;
+  imageUrl: string | null;
 };
 
 export type FormDay = {
@@ -44,6 +47,8 @@ export type FormDay = {
     /** "zbývají 3 ks", or for a day it is not baked "Peče se po, st, pá" */
     note: string | null;
   }[];
+  /** This browser already has an order for the day. */
+  ordered: boolean;
 };
 
 const INITIAL: OrderFormState = { status: "idle" };
@@ -248,6 +253,7 @@ export function OrderForm({
         <legend className="sr-only">Den vyzvednutí</legend>
         <FieldError id="pickupDate-error" messages={errors.pickupDate} />
         <DayStrip days={days} date={selected} onPick={pickDay} />
+        <DayLegend days={days} />
       </fieldset>
 
       <section className="flex flex-col gap-3" aria-labelledby="products">
@@ -412,11 +418,11 @@ export function OrderForm({
   );
 }
 
-/** Only a thin day gets a mark; a normal day needs none. */
+/** How much is left that day, at a glance: green plenty, amber few, red none. */
 const DOT = {
-  plenty: null,
+  plenty: "bg-success",
   few: "bg-warning",
-  none: null,
+  none: "bg-destructive",
 } as const;
 
 /** How much a day offers: kinds still orderable, and whether stock is thin. */
@@ -425,7 +431,7 @@ function availability(day: FormDay): {
   label: string;
 } {
   const open = day.items.filter((i) => i.state === "open");
-  if (open.length === 0) return { level: "none", label: "Nic" };
+  if (open.length === 0) return { level: "none", label: "Vyprodáno" };
   // A note on an open item means only a few pieces are left.
   const thin =
     open.filter((i) => i.note).length +
@@ -450,6 +456,46 @@ function monthLabel(date: string): string {
  * arrows on a laptop. The month above follows the scroll. The days are
  * native radios, so the form posts the day without script.
  */
+/** What the marks on the day tiles mean; only the marks that are shown. */
+function DayLegend({ days }: { days: FormDay[] }) {
+  const levels = new Set(days.map((d) => availability(d).level));
+  const items = [
+    levels.has("plenty") && (
+      <span key="plenty" className="flex items-center gap-1.5">
+        <span aria-hidden className={cn("size-2 rounded-full", DOT.plenty)} />
+        Dost pečiva
+      </span>
+    ),
+    levels.has("few") && (
+      <span key="few" className="flex items-center gap-1.5">
+        <span aria-hidden className={cn("size-2 rounded-full", DOT.few)} />
+        Málo pečiva
+      </span>
+    ),
+    levels.has("none") && (
+      <span key="none" className="flex items-center gap-1.5">
+        <span aria-hidden className={cn("size-2 rounded-full", DOT.none)} />
+        Vyprodáno
+      </span>
+    ),
+    days.some((d) => d.ordered) && (
+      <span key="ordered" className="flex items-center gap-1.5">
+        <CircleCheckIcon aria-hidden className="size-4 text-crust" />
+        Vaše objednávka
+      </span>
+    ),
+  ].filter(Boolean);
+  if (items.length === 0) return null;
+  return (
+    <div
+      aria-hidden
+      className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"
+    >
+      {items}
+    </div>
+  );
+}
+
 function DayStrip({
   days,
   date,
@@ -562,9 +608,17 @@ function DayStrip({
                 value={d.date}
                 checked={d.date === date}
                 onChange={() => onPick(d)}
-                aria-label={d.title}
+                aria-label={
+                  d.ordered ? `${d.title}, už tu máte objednávku` : d.title
+                }
                 className="sr-only"
               />
+              {d.ordered && (
+                <CircleCheckIcon
+                  aria-hidden
+                  className="absolute top-1.5 right-1.5 size-4 text-crust group-has-checked:text-primary-foreground"
+                />
+              )}
               <span className="text-sm text-muted-foreground group-has-checked:text-primary-foreground/75">
                 {d.chip}
               </span>
@@ -610,6 +664,10 @@ function ProductRow({
   const open = state === "open";
   const n = Number(value);
   const current = Number.isInteger(n) && n > 0 ? n : 0;
+  // While the count is being typed, an emptied field keeps the stepper;
+  // it folds back into the add button only when focus leaves it.
+  const [editing, setEditing] = useState(false);
+  const stepper = current > 0 || editing;
   return (
     <li
       className={cn(
@@ -617,48 +675,64 @@ function ProductRow({
         !open && "bg-hatched",
       )}
     >
-      <div className={cn("min-w-0", !open && "opacity-60")}>
-        <p
-          className={cn(
-            "font-medium sm:text-lg",
-            current > 0 && "font-semibold",
-          )}
-        >
-          {product.name}
-        </p>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          {state === "not_baked" ? (
-            note
-          ) : (
-            <>
-              <span className="font-semibold text-foreground tabular-nums">
-                {product.priceLabel}
-              </span>
-              {note && (
-                <>
-                  <span aria-hidden> · </span>
-                  <span
-                    className={cn(
-                      state === "open" && "font-medium text-foreground",
-                    )}
-                  >
-                    {note}
-                  </span>
-                </>
-              )}
-            </>
-          )}
-        </p>
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-3 sm:gap-4",
+          !open && "opacity-60",
+        )}
+      >
+        <ProductThumb src={product.imageUrl} />
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "font-medium sm:text-lg",
+              current > 0 && "font-semibold",
+            )}
+          >
+            {product.name}
+          </p>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            {state === "not_baked" ? (
+              note
+            ) : (
+              <>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {product.priceLabel}
+                </span>
+                {note && (
+                  <>
+                    <span aria-hidden> · </span>
+                    <span
+                      className={cn(
+                        state === "open" && "font-medium text-foreground",
+                      )}
+                    >
+                      {note}
+                    </span>
+                  </>
+                )}
+              </>
+            )}
+          </p>
+        </div>
       </div>
       {!open && (
         <Badge
           variant="outline"
           className="h-8 bg-card px-3 text-muted-foreground"
         >
-          {state === "sold_out" ? "Vyprodáno" : "Tento den nepečeme"}
+          {state === "sold_out" ? (
+            "Vyprodáno"
+          ) : (
+            // A phone row has no room for the long form beside the photo.
+            <>
+              <span className="sm:hidden">Nepečeme</span>
+              <span className="max-sm:hidden">Tento den nepečeme</span>
+            </>
+          )}
         </Badge>
       )}
-      {open && current === 0 && (
+      {open && !stepper && (
         // Not chosen yet: one round add button, as delivery apps do.
         <>
           <input type="hidden" name={`qty.${product.id}`} value="" />
@@ -675,16 +749,25 @@ function ProductRow({
           </Button>
         </>
       )}
-      {open && current > 0 && (
+      {open && stepper && (
         // Chosen: the add button grows into a solid stepper with the count.
-        <div className="flex shrink-0 items-center rounded-full bg-primary p-0.5 text-primary-foreground">
+        <div
+          className="flex shrink-0 items-center rounded-full bg-primary p-0.5 text-primary-foreground"
+          onFocus={() => setEditing(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setEditing(false);
+          }}
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon"
             aria-label={`Ubrat: ${product.name}`}
+            disabled={current === 0}
             onClick={() => onChange(current > 1 ? String(current - 1) : "")}
             className={STEP}
+            // Keeps focus in the field, so an empty stepper does not fold.
+            onMouseDown={(e) => e.preventDefault()}
           >
             <MinusIcon aria-hidden />
           </Button>
@@ -710,6 +793,8 @@ function ProductRow({
             disabled={current >= remaining}
             onClick={() => onChange(String(current + 1))}
             className={STEP}
+            // Keeps focus in the field, so an empty stepper does not fold.
+            onMouseDown={(e) => e.preventDefault()}
           >
             <PlusIcon aria-hidden />
           </Button>

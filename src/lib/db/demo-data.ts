@@ -28,23 +28,68 @@ import {
 
 const OPEN_DAYS = [1, 2, 3, 4, 5, 6];
 
+// Demo photos are generated product shots in public/products.
 const PRODUCTS = [
-  { name: "Rohlík", price: 450, dailyLimit: 300, buffer: 40 },
-  { name: "Kaiserka", price: 600, dailyLimit: 150, buffer: 20 },
-  { name: "Kváskový chléb", price: 7900, dailyLimit: 40, buffer: 6 },
+  {
+    name: "Rohlík",
+    imageUrl: "/products/rohlik.webp",
+    price: 450,
+    dailyLimit: 300,
+    buffer: 40,
+  },
+  {
+    name: "Kaiserka",
+    imageUrl: "/products/kaiserka.webp",
+    price: 600,
+    dailyLimit: 150,
+    buffer: 20,
+  },
+  {
+    name: "Kváskový chléb",
+    imageUrl: "/products/kvaskovy-chleb.webp",
+    price: 7900,
+    dailyLimit: 40,
+    buffer: 6,
+  },
   {
     name: "Celozrnný chléb",
+    imageUrl: "/products/celozrnny-chleb.webp",
     price: 6900,
     dailyLimit: 20,
     buffer: 3,
     bakeDays: [2, 4, 6],
   },
-  { name: "Croissant", price: 3900, dailyLimit: 60, buffer: 10 },
-  { name: "Bageta", price: 3500, dailyLimit: 50, buffer: 8 },
-  { name: "Tvarohový koláč", price: 2900, dailyLimit: 40, buffer: 6 },
-  { name: "Makové buchty", price: 3200, dailyLimit: 30, buffer: 5 },
+  {
+    name: "Croissant",
+    imageUrl: "/products/croissant.webp",
+    price: 3900,
+    dailyLimit: 60,
+    buffer: 10,
+  },
+  {
+    name: "Bageta",
+    imageUrl: "/products/bageta.webp",
+    price: 3500,
+    dailyLimit: 50,
+    buffer: 8,
+  },
+  {
+    name: "Tvarohový koláč",
+    imageUrl: "/products/tvarohovy-kolac.webp",
+    price: 2900,
+    dailyLimit: 40,
+    buffer: 6,
+  },
+  {
+    name: "Makové buchty",
+    imageUrl: "/products/makove-buchty.webp",
+    price: 3200,
+    dailyLimit: 30,
+    buffer: 5,
+  },
   {
     name: "Vánočka",
+    imageUrl: "/products/vanocka.webp",
     price: 14900,
     dailyLimit: 15,
     buffer: 2,

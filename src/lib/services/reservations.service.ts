@@ -401,7 +401,13 @@ export type OrderView = {
   /** "08:30", or null when no time was given. */
   pickupTime: string | null;
   status: ReservationStatus;
-  items: { productName: string; quantity: number; unitPrice: number }[];
+  items: {
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    /** The product's current photo; names and prices are the order's copy. */
+    imageUrl: string | null;
+  }[];
   /** In haléře. */
   total: number;
   /** The last moment to cancel, as an ISO instant (the order cutoff). */
@@ -427,8 +433,10 @@ export async function orderByToken(
       productName: reservationItem.productName,
       quantity: reservationItem.quantity,
       unitPrice: reservationItem.unitPrice,
+      imageUrl: product.imageUrl,
     })
     .from(reservationItem)
+    .innerJoin(product, eq(product.id, reservationItem.productId))
     .where(eq(reservationItem.reservationId, row.id))
     .orderBy(reservationItem.productName);
   const cutoff = await cutoffTime(db);

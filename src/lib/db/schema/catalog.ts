@@ -38,6 +38,8 @@ export const product = pgTable(
     /** ISO weekdays the product is baked (1 = Monday). */
     bakeDays: smallint("bake_days").array().notNull(),
     active: boolean("active").default(true).notNull(),
+    /** The photo: a Vercel Blob URL, or a path under public/ (demo data). */
+    imageUrl: text("image_url"),
     ...timestamps,
   },
   (t) => [

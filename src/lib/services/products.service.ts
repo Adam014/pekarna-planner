@@ -18,6 +18,8 @@ export type ProductRow = {
   buffer: number;
   bakeDays: number[];
   active: boolean;
+  /** The photo URL, or null without one. */
+  imageUrl: string | null;
 };
 
 /** Every product: those on offer first, each group by name the Czech way. */
@@ -31,6 +33,7 @@ export async function listProducts(db: Db): Promise<ProductRow[]> {
       buffer: product.buffer,
       bakeDays: product.bakeDays,
       active: product.active,
+      imageUrl: product.imageUrl,
     })
     .from(product)
     .orderBy(desc(product.active), sql`${product.name} collate "cs-CZ-x-icu"`);
@@ -68,6 +71,27 @@ export async function saveProduct(
     }
     throw error;
   }
+}
+
+/**
+ * Sets or clears the product's photo. Returns the photo it replaced, so the
+ * caller can delete the old file, or null when there is no such product.
+ */
+export async function setProductImage(
+  db: Db,
+  id: string,
+  imageUrl: string | null,
+): Promise<{ previous: string | null } | null> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ imageUrl: product.imageUrl })
+      .from(product)
+      .where(eq(product.id, id))
+      .for("update");
+    if (!row) return null;
+    await tx.update(product).set({ imageUrl }).where(eq(product.id, id));
+    return { previous: row.imageUrl };
+  });
 }
 
 function isDuplicateName(error: unknown): boolean {

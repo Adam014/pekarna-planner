@@ -24,7 +24,12 @@ import { orderToken } from "@/lib/validators/order-token";
 export type OrderSummary = {
   /** "pátek 27. listopadu" */
   day: string;
-  items: { name: string; quantity: number; price: string }[];
+  items: {
+    name: string;
+    quantity: number;
+    price: string;
+    imageUrl: string | null;
+  }[];
   total: string;
 };
 
@@ -97,6 +102,7 @@ export async function placeOrder(
         name: i.productName,
         quantity: i.quantity,
         price: formatPrice(i.quantity * i.unitPrice),
+        imageUrl: i.imageUrl,
       })),
       total: formatPrice(total),
     },
