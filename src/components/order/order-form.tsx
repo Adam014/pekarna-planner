@@ -431,7 +431,7 @@ function availability(day: FormDay): {
   label: string;
 } {
   const open = day.items.filter((i) => i.state === "open");
-  if (open.length === 0) return { level: "none", label: "Vyprodáno" };
+  if (open.length === 0) return { level: "none", label: "Plno" };
   // A note on an open item means only a few pieces are left.
   const thin =
     open.filter((i) => i.note).length +
@@ -475,7 +475,7 @@ function DayLegend({ days }: { days: FormDay[] }) {
     levels.has("none") && (
       <span key="none" className="flex items-center gap-1.5">
         <span aria-hidden className={cn("size-2 rounded-full", DOT.none)} />
-        Vyprodáno
+        Plno
       </span>
     ),
     days.some((d) => d.ordered) && (
